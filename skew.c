@@ -15,7 +15,7 @@
 // Time format in RBN data file
 #define FMT "%Y-%m-%d %H:%M:%S"
 // Number of most recent spots considered in analysis
-#define SPOTSWINDOW 1000
+#define SPOTSWINDOW 500
 // Maximum number of reference skimmers
 #define MAXREF 50
 // Maximum number of skimmers supported
@@ -66,9 +66,9 @@ int main(int argc, char *argv[])
     struct Skimmer
     {
         char name[STRLEN]; // Skimmer callsign
-        double accdev;     // Accumulated absolute deviation 
-        double avdev;      // Average deviation in ppm
-        double absavdev;   // Absolute average deviation in ppm
+        float accdev;     // Accumulated deviation in ppm
+        float avdev;      // Average deviation in ppm
+        float absavdev;   // Absolute average deviation in ppm
         int count;         // Number of analyzed spots
         time_t first;      // Earliest spot
         time_t last;       // Latest spot
@@ -88,6 +88,8 @@ int main(int argc, char *argv[])
 
     struct Spot pipeline[SPOTSWINDOW];
     struct Skimmer skimmer[MAXSKIMMERS], temp;
+
+    static char linearray[5000000][LINELEN];
 
     // Avoid that unitialized entries in pipeline are used
     for (i = 0; i < SPOTSWINDOW; i++)
@@ -160,7 +162,7 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Can not open file \"%s\". Abort.\n", reffilename);
         return 1;
     }
-    
+  
     while (fgets(line, LINELEN, fr) != NULL)
     {
         char tempstring[LINELEN];
@@ -198,15 +200,25 @@ int main(int argc, char *argv[])
         return 1;
     }  
 
+    int totlines = 0;
     while (fgets(line, LINELEN, fp) != NULL)
+        strcpy(linearray[totlines++], line);
+
+    time_t readtime;
+    (void)time(&readtime);
+    timeinfo = localtime(&readtime);
+
+    fprintf(stderr, "Reading %d lines took %.2f seconds\n", totlines, difftime(readtime, starttime));
+
+    for (int l = 0; l < totlines; l++) 
     {
         char de[STRLEN], dx[STRLEN], timestring[STRLEN], mode[STRLEN];
-        double freq;
+        float freq;
         int snr;
         time_t spottime;
         
         // callsign,de_pfx,de_cont,freq,band,dx,dx_pfx,dx_cont,mode,db,date,speed,tx_mode
-        int got = sscanf(line, "%[^,],%*[^,],%*[^,],%lf,%*[^,],%[^,],%*[^,],%*[^,],%*[^,],%d,%[^,],%*[^,],%s",
+        int got = sscanf(linearray[l], "%[^,],%*[^,],%*[^,],%f,%*[^,],%[^,],%*[^,],%*[^,],%*[^,],%d,%[^,],%*[^,],%s",
             de, &freq, dx, &snr, timestring, mode);
 
         if (got == 6 ) // If parsing is successful
@@ -286,7 +298,7 @@ int main(int argc, char *argv[])
 
                                 if (skimpos != -1) // if in the list, update it
                                 {
-                                    skimmer[skimpos].accdev += pipeline[i].freq / (10.0 * freq);
+                                    skimmer[skimpos].accdev += 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
                                     skimmer[skimpos].count++;
                                     if (pipeline[i].time > skimmer[skimpos].last)
                                         skimmer[skimpos].last = pipeline[i].time;
@@ -296,7 +308,7 @@ int main(int argc, char *argv[])
                                 else // If new skimmer, add it to list
                                 {
                                     strcpy(skimmer[skimmers].name, pipeline[i].de);
-                                    skimmer[skimmers].accdev = pipeline[i].freq / (10.0 * freq);
+                                    skimmer[skimmers].accdev = 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
                                     skimmer[skimmers].count = 1;
                                     skimmer[skimmers].first = pipeline[i].time;
                                     skimmer[skimmers].last = pipeline[i].time;
@@ -334,7 +346,7 @@ int main(int argc, char *argv[])
     // Calculate statistics
     for (i = 0; i < skimmers; i++)
     {
-        skimmer[i].avdev = 1000000.0 * (skimmer[i].accdev / skimmer[i].count - 1.0);
+        skimmer[i].avdev = skimmer[i].accdev / skimmer[i].count;
         skimmer[i].absavdev = fabs(skimmer[i].avdev);
     }
 
@@ -460,8 +472,8 @@ int main(int argc, char *argv[])
     {
         if (skimmer[i].count >= minspots)
         {
-            printf("# %-9s %+5.1f %6d %13.9f\n",
-                skimmer[i].name, skimmer[i].avdev, skimmer[i].count, skimmer[i].accdev / skimmer[i].count);
+            printf("# %-9s %+5.1f %6d %13.9lf\n",
+                skimmer[i].name, skimmer[i].avdev, skimmer[i].count, (1.0 + (double)skimmer[i].avdev / 1000000.0));
         }
     }
 
