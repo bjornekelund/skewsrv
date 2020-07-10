@@ -298,7 +298,10 @@ int main(int argc, char *argv[])
 
                                 if (skimpos != -1) // if in the list, update it
                                 {
-                                    skimmer[skimpos].accdev += 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
+                                    // skimmer[skimpos].accdev += 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
+                                    double FILTER = 50.0;
+                                    skimmer[skimpos].avdev = (1.0 - 1.0 / FILTER) * skimmer[skimpos].avdev + 
+                                        (1.0 / FILTER) * 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
                                     skimmer[skimpos].count++;
                                     if (pipeline[i].time > skimmer[skimpos].last)
                                         skimmer[skimpos].last = pipeline[i].time;
@@ -308,7 +311,8 @@ int main(int argc, char *argv[])
                                 else // If new skimmer, add it to list
                                 {
                                     strcpy(skimmer[skimmers].name, pipeline[i].de);
-                                    skimmer[skimmers].accdev = 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
+                                    // skimmer[skimmers].accdev = 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
+                                    skimmer[skimmers].avdev = 0.0;
                                     skimmer[skimmers].count = 1;
                                     skimmer[skimmers].first = pipeline[i].time;
                                     skimmer[skimmers].last = pipeline[i].time;
@@ -346,7 +350,7 @@ int main(int argc, char *argv[])
     // Calculate statistics
     for (i = 0; i < skimmers; i++)
     {
-        skimmer[i].avdev = skimmer[i].accdev / skimmer[i].count;
+        // skimmer[i].avdev = skimmer[i].accdev / skimmer[i].count;
         skimmer[i].absavdev = fabs(skimmer[i].avdev);
     }
 
