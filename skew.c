@@ -15,7 +15,7 @@
 // Time format in RBN data file
 #define FMT "%Y-%m-%d %H:%M:%S"
 // Number of most recent spots considered in analysis
-#define SPOTSWINDOW 500
+#define SPOTSWINDOW 1000
 // Maximum number of reference skimmers
 #define MAXREF 50
 // Maximum number of skimmers supported
@@ -27,7 +27,7 @@
 // Minimum SNR required for spot to be used
 #define MINSNR 6
 // Minimum frequency for spot to be used
-#define MINFREQ 7000
+#define MINFREQ 1800
 // Minimum number of spots to be analyzed
 #define MINSPOTS 50
 // Maximum difference from reference spot times 100Hz
@@ -298,10 +298,12 @@ int main(int argc, char *argv[])
 
                                 if (skimpos != -1) // if in the list, update it
                                 {
-                                    // skimmer[skimpos].accdev += 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
-                                    double FILTER = 50.0;
-                                    skimmer[skimpos].avdev = (1.0 - 1.0 / FILTER) * skimmer[skimpos].avdev + 
-                                        (1.0 / FILTER) * 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
+                                    double tc = 100.0;
+                                    double basefq = 14000.0;
+                                    double k1 = 1.0 - basefq / (tc * freq);
+                                    double k2 = 100000.0 * basefq / (tc * freq);
+                                    skimmer[skimpos].avdev = k1 * skimmer[skimpos].avdev + 
+                                        k2 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
                                     skimmer[skimpos].count++;
                                     if (pipeline[i].time > skimmer[skimpos].last)
                                         skimmer[skimpos].last = pipeline[i].time;
@@ -311,8 +313,7 @@ int main(int argc, char *argv[])
                                 else // If new skimmer, add it to list
                                 {
                                     strcpy(skimmer[skimmers].name, pipeline[i].de);
-                                    // skimmer[skimmers].accdev = 100000.0 * ((double)pipeline[i].freq - (10.0 * freq)) / freq;
-                                    skimmer[skimmers].avdev = 0.0;
+                                    skimmer[skimmers].avdev = 0.0; // Guess zero error as start
                                     skimmer[skimmers].count = 1;
                                     skimmer[skimmers].first = pipeline[i].time;
                                     skimmer[skimmers].last = pipeline[i].time;
