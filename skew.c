@@ -281,17 +281,6 @@ int main(int argc, char *argv[])
                             {
                                 usedspots++;
 
-                                // Print outliers if in debug mode
-                                if (adelta > 2 && verbose && !quiet) 
-                                {
-                                    stime = *localtime(&pipeline[i].time);
-                                    (void)strftime(timestring, STRLEN, FMT, &stime);
-                                    fprintf(stderr,
-                                        "Outlier spot of %8s by %8s at %7.1f (was %7.1f) off by %+3.1f @ %s\n",
-                                        pipeline[i].dx, pipeline[i].de, pipeline[i].freq / 10.0,
-                                        freq, delta / 10.0, timestring);
-                                }
-
                                 // Check if this skimmer is already in list
                                 int skimpos = -1;
                                 for (j = 0; j < skimmers; j++)
