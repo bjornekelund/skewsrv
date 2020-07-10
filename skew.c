@@ -25,11 +25,11 @@
 // Max number of seconds apart from a reference spot
 #define MAXAPART 30
 // Minimum SNR required for spot to be used
-#define MINSNR 6
+#define MINSNR 3
 // Minimum frequency for spot to be used
 #define MINFREQ 1800
 // Minimum number of spots to be analyzed
-#define MINSPOTS 50
+#define MINSPOTS 1
 // Maximum difference from reference spot times 100Hz
 #define MAXERR 5
 // Name of file containing callsigns of reference skimmmers
@@ -85,7 +85,7 @@ int main(int argc, char *argv[])
     int    i, j, referenceskimmers = 0, c, spp = 0, minsnr = MINSNR, skimmers = 0, 
            minspots = MINSPOTS, maxapart = MAXAPART;
 
-    unsigned long int totalspots = 0, refspots = 0, usedspots = 0;
+    unsigned long long int totalspots = 0, refspots = 0, usedspots = 0;
 
     struct Spot pipeline[SPOTSWINDOW];
     struct Skimmer skimmer[MAXSKIMMERS], temp;
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
             }
 
             totalspots++;
-
+            
             // If SNR is sufficient and frequency OK and mode is right
             if (snr >= minsnr && freq >= MINFREQ && strcmp(mode, spotmode) == 0) 
             {
@@ -408,10 +408,10 @@ int main(int argc, char *argv[])
     (void)strftime(firsttimestring, STRLEN, FMT, &stime);
     stime = *localtime(&lastspot);
     (void)strftime(lasttimestring, STRLEN, FMT, &stime);
-    sprintf(outstring, "%ld RBN spots between %s and %s\n", totalspots, firsttimestring, lasttimestring);
+    sprintf(outstring, "%lld RBN spots between %s and %s\n", totalspots, firsttimestring, lasttimestring);
     printboth(outstring, quiet);
 
-    sprintf(outstring, "processed of which %ld spots (%.1f%%) were reference spots.\n", 
+    sprintf(outstring, "processed of which %lld spots (%.1f%%) were reference spots.\n", 
         refspots, 100.0 * refspots / totalspots);
     printboth(outstring, quiet);
 
@@ -445,7 +445,7 @@ int main(int argc, char *argv[])
         printf("\n");
 
     sprintf(outstring, 
-        "%ld spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n",
+        "%lld spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n",
         (targeted && usedspots <= minspots) ? 0 : usedspots, qualskimcount);
     printboth(outstring, quiet);
 
