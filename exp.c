@@ -24,7 +24,6 @@ int main (void)
     time_t jstime1, jstime2, spottime;
     float freq;
     struct tm *stime;
-    // char field[12][STRLEN];
     int spot_type, mode, ntp;
     float base_freq;
     
