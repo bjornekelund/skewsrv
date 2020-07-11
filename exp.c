@@ -66,6 +66,16 @@ int main(void)
     // Avoid that unitialized entries in pipeline are used
     for (int i = 0; i < SPOTSWINDOW; i++)
         pipeline[i].analyzed = true;
+    
+    if (DEBUG)
+    {
+        for (int i = 0; i < MAXSKIMMERS; i++)
+        {
+            skimmer[i].avadj = 1.0;
+            skimmer[i].name[0]  = 0;
+        }
+        printf("\033c");
+    }
 
     fr = fopen(REFFILENAME, "r");
 
@@ -200,18 +210,22 @@ int main(void)
                                 if (pipeline[i].time < skimmer[skimpos].first)
                                     skimmer[skimpos].first = pipeline[i].time;
                                 // if (DEBUG)
-                                    // printf("Skimmer %-9s Dev %+4.2f\n", 
+                                    // printf("Skimmer %-9s Dev %+6.2f\n", 
                                         // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
                                         // 1000000.0 * (skimmer[skimpos].avadj - 1.0));
-                                if (DEBUG && skimpos < 8)
+                                if (DEBUG && skimpos < 96)
                                 {
-                                    // printf("Skimmer %-9s Dev %+4.2f %s\n", 
+                                    // printf("Skimmer %-9s Dev %+5.2f %s\n", 
                                         // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
                                         // skimmer[skimpos].reference ? "+" : "");
-                                    for (int i = 0; i < 8; i++)
+                                    printf("\033[H");
+                                    for (int i = 0; i < 96; i++)
                                     {
-                                        printf("S:%-7sD:%+4.2f ", 
+                                        printf("%10s:%+6.2f ", 
                                             skimmer[i].name, 1000000.0 * (skimmer[i].avadj - 1.0));
+                                            if ((i + 1) % 6 == 0)
+                                                printf("\n");
+                                            
                                     }
                                     printf("\n");
                                 }
@@ -223,10 +237,10 @@ int main(void)
                                     fprintf(stderr, "Skimmer list overflow (%d). Clearing list.\n", skimmers);
                                     skimmers = 0;                                        
                                 }
-                                if (strcmp(pipeline[i].de, "SM7IUN") == 0)
-                                {
-                                    printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", skimmers + 1, i, pipeline[i].de);
-                                }
+                                // if (strcmp(pipeline[i].de, "SM7IUN") == 0)
+                                // {
+                                    // printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", skimmers + 1, i, pipeline[i].de);
+                                // }
 
                                 strcpy(skimmer[skimmers].name, pipeline[i].de);
                                 skimmer[skimmers].avadj = 1.0; // Guess zero error as start
@@ -235,8 +249,8 @@ int main(void)
                                 skimmer[skimmers].last = pipeline[i].time;
                                 skimmer[skimmers].reference = pipeline[i].reference;
                                 skimmers++;
-                                if (DEBUG)
-                                    fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
+                                // if (DEBUG)
+                                    // fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
                             }
                         }
                     }
