@@ -14,9 +14,9 @@
 #define MAXSKIMMERS 500
 #define SPOTSWINDOW 1000
 #define MAXREF 50
-#define MAXERR 5
+#define MAXERR 0.5
 #define MINSNR 6
-#define MINFREQ 1800
+#define MINFREQ 1800.0
 #define CW 1
 #define CQ 1
 #define DX 2
@@ -33,7 +33,7 @@ int main(void)
         char dx[STRLEN];   // Spotted call
         time_t time;       // Spot timestamp in epoch format
         int snr;           // SNR for spotcount
-        int freq;          // 10x spot frequency
+        double freq;       // Spot frequency
         bool reference;    // Originates from a reference skimmer
         bool analyzed;     // Already analyzed
     };
@@ -116,10 +116,10 @@ int main(void)
             char de[STRLEN], dx[STRLEN], timestring[TSLEN], extradata[STRLEN];
             int snr, speed, spot_type, mode, ntp;
             time_t jstime1, jstime2, spottime;
-            float freq, base_freq;
+            double freq, base_freq;
             struct tm *stime;
 
-            int got = sscanf(buffer, "%f|%[^|]|%[^|]|%d|%f|%d|%d|%d|%d|%ld|%ld|%s",
+            int got = sscanf(buffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%ld|%ld|%s",
                 &freq, dx, de, &spot_type, &base_freq, &snr, &speed, &mode, &ntp, &jstime1, &jstime2, extradata);
 
             spottime = jstime2 / 1000;
@@ -156,9 +156,9 @@ int main(void)
                 {                    
                     for (int i = 0; i < SPOTSWINDOW; i++)
                     {
-                        // delta is frequency deviation / 100Hz
-                        int delta = pipeline[i].freq - (int)round(freq * 10.0);
-                        int adelta = delta > 0 ? delta : -delta;
+                        // delta is frequency deviation in kHz
+                        double delta = pipeline[i].freq - freq;
+                        double adelta = delta > 0 ? delta : -delta;
                         
                         if (!pipeline[i].analyzed && strcmp(pipeline[i].dx, dx) == 0 &&
                             adelta <= MAXERR && strcmp(pipeline[i].de, de) != 0 &&
@@ -187,12 +187,12 @@ int main(void)
                                 // First order IIR filtering of deviation
                                 // Time constant inversely proportional to 
                                 // frequency normalized at 14MHz
-                                const double tc = 100.0;
+                                const double tc = 50.0;
                                 const double basefq = 14000.0;
                                 double factor = basefq / (tc * freq);
                                 skimmer[skimpos].avadj = 
                                     (1.0 - factor) * skimmer[skimpos].avadj + 
-                                    factor * 0.1 * (double)pipeline[i].freq / (double)freq;
+                                    factor * pipeline[i].freq / freq;
 
                                 skimmer[skimpos].count++;
                                 if (pipeline[i].time > skimmer[skimpos].last)
@@ -203,9 +203,18 @@ int main(void)
                                     // printf("Skimmer %-9s Dev %+4.2f\n", 
                                         // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
                                         // 1000000.0 * (skimmer[skimpos].avadj - 1.0));
-                                if (DEBUG)
-                                    printf("Skimmer %-9s Dev %+4.2f\n", 
-                                        skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0));
+                                if (DEBUG && skimpos < 8)
+                                {
+                                    // printf("Skimmer %-9s Dev %+4.2f %s\n", 
+                                        // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
+                                        // skimmer[skimpos].reference ? "+" : "");
+                                    for (int i = 0; i < 8; i++)
+                                    {
+                                        printf("S:%-7sD:%+4.2f ", 
+                                            skimmer[i].name, 1000000.0 * (skimmer[i].avadj - 1.0));
+                                    }
+                                    printf("\n");
+                                }
                             }
                             else // If new skimmer, add it to list
                             {
@@ -236,7 +245,7 @@ int main(void)
                 // Save new spot in pipeline
                 strcpy(pipeline[spp].de, de);
                 strcpy(pipeline[spp].dx, dx);
-                pipeline[spp].freq = (int)round(freq * 10.0);
+                pipeline[spp].freq = freq;
                 pipeline[spp].snr = snr;
                 pipeline[spp].reference = reference;
                 pipeline[spp].analyzed = false;
