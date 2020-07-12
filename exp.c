@@ -10,12 +10,14 @@
 #define BUFLEN 256
 #define STRLEN 16
 #define TSLEN 20
+#define BANDNAMES {"160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m" }
 #define BANDS 12
 #define CW 1
 #define CQ 1
 #define DX 2
 #define REFFILENAME "reference"
 #define USAGE "Usage: %s [-d]\n"
+#define ZMQURL "tcp://138.201.156.239:5566"
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
@@ -36,7 +38,7 @@
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXSILENCE 90
+#define MAXSILENCE 180
 
 #define DEBUG true
 
@@ -53,9 +55,9 @@ struct Spot
 
 struct Bandinfo
 {
-    char name[STRLEN];       // Human friendly name of band
-    long count;          // Number of analyzed spots
-    bool active;       // Heard from in MAXSILENCE seconds or less
+    char name[STRLEN];  // Human friendly name of band
+    long count;         // Number of analyzed spots
+    bool active;        // Heard from in MAXSILENCE seconds or less
     double avadj;       // Average deviation as factor
     double avdev;       // Average deviation in ppm
     double absavdev;    // Absolute average deviation in ppm
@@ -69,6 +71,11 @@ struct Skimmer
     struct Bandinfo band[BANDS];
 };
 
+static struct Spot pipeline[SPOTSWINDOW];
+static struct Skimmer skimmer[MAXSKIMMERS];
+static char referenceskimmer[MAXREF][STRLEN];
+static int Skimmers = 0, Referenceskimmers = 0;
+
 void printstatus(char *string, int line)
 {
     printf("\033[%d;H", 21 + line);
@@ -76,10 +83,6 @@ void printstatus(char *string, int line)
     for (int i = strlen(string); i < 80; i++)
         printf(" ");
 }
-
-static struct Spot pipeline[SPOTSWINDOW];
-static struct Skimmer skimmer[MAXSKIMMERS];
-static int Skimmers = 0;
 
 void printstatuscall(char *call, int line)
 {
@@ -149,17 +152,17 @@ int fqbandindex(double freq)
 
 int main(int argc, char *argv[])
 {
-    void *context = zmq_ctx_new();
-    void *requester = zmq_socket(context, ZMQ_SUB);
-    zmq_connect(requester, "tcp://138.201.156.239:5566");
-    (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
+    const char *bandname[] = BANDNAMES;
     char buffer[BUFLEN], tmpstring[BUFLEN];
-    char referenceskimmer[MAXREF][STRLEN];
-    int c, spp = 0, referenceskimmers = 0;
-    long long int totalspots = 0; // , usedspots = 0;
+    int c, spp = 0;
+    long long int totalspots = 0;
     FILE *fr;
     bool debug = DEBUG;
-    const char *bandname[] = {"160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m" };
+
+    void *context = zmq_ctx_new();
+    void *requester = zmq_socket(context, ZMQ_SUB);
+    zmq_connect(requester, ZMQURL);
+    (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
     
     printf("Connecting to server...\n");
 
@@ -216,9 +219,9 @@ int main(int argc, char *argv[])
             // Don't include comment lines
             if (tempstring[0] != '#')
             {
-                strcpy(referenceskimmer[referenceskimmers], tempstring);
-                referenceskimmers++;
-                if (referenceskimmers >= MAXREF) 
+                strcpy(referenceskimmer[Referenceskimmers], tempstring);
+                Referenceskimmers++;
+                if (Referenceskimmers >= MAXREF) 
                 {
                     fprintf(stderr, "Overflow: Last reference skimmer read is %s.\n", tempstring);
                     (void)fclose(fr);
@@ -273,7 +276,7 @@ int main(int argc, char *argv[])
                 {
                     // Check if this spot is from a reference skimmer
                     bool reference = false;
-                    for (int i = 0; i < referenceskimmers; i++)
+                    for (int i = 0; i < Referenceskimmers; i++)
                     {
                         if (strcmp(de, referenceskimmer[i]) == 0)
                         {
