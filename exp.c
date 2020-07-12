@@ -34,7 +34,7 @@
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXSILENCE 60
+#define MAXSILENCE 180
 
 #define DEBUG true
 
@@ -322,7 +322,7 @@ int main(void)
         // if (nowtime % 60 == MAXSILENCE) // Once per minute
         {
             for (int i = 0; i < skimmers; i++)
-                if (difftime(nowtime, skimmer[i].last) > MAXSILENCE)
+                if (difftime(nowtime, skimmer[i].last) >= MAXSILENCE)
                 {
                     if (!skimmer[i].inactive)
                     {
