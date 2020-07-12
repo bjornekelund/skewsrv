@@ -38,7 +38,7 @@
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXINACT 120
+#define MAXINACT 300
 // Time constant in qualified spots of filter for error at 14MHz
 #define TC 50
 
