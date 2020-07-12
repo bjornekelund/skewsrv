@@ -309,6 +309,17 @@ int main(int argc, char *argv[])
                                         skimmer[skimpos].last = pipeline[i].time;
                                     if (pipeline[i].time < skimmer[skimpos].first)
                                         skimmer[skimpos].first = pipeline[i].time;
+                                    
+                                    char *call = "DR4W";
+                                    for (int si = 0; si < skimmers; si++)
+                                    {
+                                        if (strcmp(skimmer[si].name, call) == 0) 
+                                        {
+                                            printf("%lld %+6.2lf\n", totalspots, 1.0E+06*(skimmer[si].avadj - 1.0));
+                                        }
+                                            
+                                    }
+                                    
                                 }
                                 else // If new skimmer, add it to list
                                 {
