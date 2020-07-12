@@ -14,6 +14,7 @@
 #define CQ 1
 #define DX 2
 #define REFFILENAME "reference"
+#define USAGE "Usage: %s [-d]\n"
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
@@ -34,11 +35,11 @@
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXSILENCE 180
+#define MAXSILENCE 90
 
 #define DEBUG true
 
-int main(void)
+int main(int argc, char *argv[])
 {
     struct Spot 
     {
@@ -65,13 +66,10 @@ int main(void)
 
     void printstatus(char *string, int line)
     {
-        if (DEBUG)
-        {
-            printf("\033[%d;H", 18 + line);
-            printf("%s", string);
-            for (int i = strlen(string); i < 80; i++)
-                printf(" ");
-        }
+        printf("\033[%d;H", 18 + line);
+        printf("%s", string);
+        for (int i = strlen(string); i < 80; i++)
+            printf(" ");
     }
 
     printf("Connecting to server...\n");
@@ -81,18 +79,34 @@ int main(void)
     (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
     char buffer[BUFLEN], tmpstring[BUFLEN];
     char referenceskimmer[MAXREF][STRLEN];
-    int spp = 0, skimmers = 0, referenceskimmers = 0;
+    int c, spp = 0, skimmers = 0, referenceskimmers = 0;
     long long int totalspots = 0; // , usedspots = 0;
     FILE *fr;
+    bool debug = DEBUG;
     
     struct Spot pipeline[SPOTSWINDOW];
     struct Skimmer skimmer[MAXSKIMMERS];
+
+    while ((c = getopt(argc, argv, "d")) != -1)
+    {
+        switch (c)
+        {
+            case 'd': 
+                debug = true;
+                break;
+            case '?':
+                fprintf(stderr, USAGE, argv[0]);
+                return 1;
+            default:
+                abort();
+        }
+    }
 
     // Avoid that unitialized entries in pipeline are used
     for (int i = 0; i < SPOTSWINDOW; i++)
         pipeline[i].analyzed = true;
     
-    if (DEBUG)
+    if (debug)
     {
         for (int i = 0; i < MAXSKIMMERS; i++)
         {
@@ -157,7 +171,7 @@ int main(void)
             {
                 spottime = jstime2 / 1000;
                 
-                if (DEBUG)
+                if (debug)
                 {
                     struct tm *stime;
                     stime = gmtime(&spottime);
@@ -246,18 +260,18 @@ int main(void)
                                         
                                     skimmer[skimpos].count++;
                                     skimmer[skimpos].last = pipeline[i].time;
-                                    if (skimmer[skimpos].inactive == true)
+                                    if (skimmer[skimpos].inactive == true && debug)
                                     {
                                         sprintf(tmpstring, "Skimmer %s marked not silent", skimmer[skimpos].name);
                                         printstatus(tmpstring, 1);
                                     }
 
                                     skimmer[skimpos].inactive = false;
-                                    // if (DEBUG)
+                                    // if (debug)
                                         // printf("Skimmer %-9s Dev %+6.2f\n", 
                                             // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
                                             // 1000000.0 * (skimmer[skimpos].avadj - 1.0));
-                                    if (DEBUG && skimpos < 96)
+                                    if (debug && skimpos < 96)
                                     {
                                         // printf("Skimmer %-9s Dev %+5.2f %s\n", 
                                             // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
@@ -295,7 +309,7 @@ int main(void)
                                     skimmer[skimpos].inactive = false;
 
                                     skimmers++;
-                                    // if (DEBUG)
+                                    // if (debug)
                                         // fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
                                 }
                             }
@@ -324,7 +338,7 @@ int main(void)
             for (int i = 0; i < skimmers; i++)
                 if (difftime(nowtime, skimmer[i].last) >= MAXSILENCE)
                 {
-                    if (!skimmer[i].inactive)
+                    if (!skimmer[i].inactive && debug)
                     {
                         sprintf(tmpstring, "Skimmer %s marked silent - no spots for %.0f", 
                             skimmer[i].name, difftime(nowtime, skimmer[i].last));
