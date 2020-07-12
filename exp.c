@@ -38,7 +38,7 @@
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXSILENCE 180
+#define MAXSILENCE 300
 
 #define DEBUG true
 
@@ -78,31 +78,43 @@ static int Skimmers = 0, Referenceskimmers = 0;
 
 void printstatus(char *string, int line)
 {
-    printf("\033[%d;H", 21 + line);
+    printf("\033[%d;H", 20 + line);
     printf("%s", string);
     for (int i = strlen(string); i < 80; i++)
         printf(" ");
 }
 
-void printstatuscall(char *call, int line)
+void printstatuscall(char *call1, char *call2, char *call3, char *call4, int line)
 {
-    for (int skimpos = 0; skimpos < Skimmers; skimpos++)
+    char call[4][STRLEN];
+    
+    strcpy(call[0], call1);
+    strcpy(call[1], call2);
+    strcpy(call[2], call3);
+    strcpy(call[3], call4);
+    
+    int col = 1;
+    for (int cn = 0; cn < 4; cn++)
     {
-        if (strcmp(call, skimmer[skimpos].name) == 0)
+        for (int skimpos = 0; skimpos < Skimmers; skimpos++)
         {
-            int j  = line;
-            for (int band = 0; band < BANDS; band++)
+            if (strcmp(call[cn], skimmer[skimpos].name) == 0)
             {
-                if (skimmer[skimpos].band[band].active)
+                int j  = line;
+                for (int band = 0; band < BANDS; band++)
                 {
-                    printf("\033[%d;H", 24 + j++);
-                    printf("%s: %s %.2fppm", skimmer[skimpos].name, 
-                        skimmer[skimpos].band[band].name, skimmer[skimpos].band[band].avdev); 
+                    if (skimmer[skimpos].band[band].active)
+                    {
+                        printf("\033[%d;%dH", 23 + j++, col);
+                        printf("%s: %s %.2fppm", skimmer[skimpos].name, 
+                            skimmer[skimpos].band[band].name, skimmer[skimpos].band[band].avdev); 
+                    }
                 }
-            }
-            for (int k = j; k < 6; k++)
-            {
-                printf("\033[%d;H                       ", 24 + j++);
+                for (int k = j; k < 8; k++)
+                {
+                    printf("\033[%d;H                       ", 24 + j++);
+                }
+                col += 25;
             }
         }
     }
@@ -289,7 +301,7 @@ int main(int argc, char *argv[])
                     // in the pipeline
                     if (reference)
                     {                    
-                        printstatuscall("F6IIT", 0);
+                        printstatuscall("F6IIT", "OK2EW", "SM6FMB", "SM0IHR", 0);
                         
                         for (int i = 0; i < SPOTSWINDOW; i++)
                         {
