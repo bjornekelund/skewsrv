@@ -10,6 +10,7 @@
 #define BUFLEN 256
 #define STRLEN 16
 #define TSLEN 20
+#define BANDS 12
 #define CW 1
 #define CQ 1
 #define DX 2
@@ -39,53 +40,128 @@
 
 #define DEBUG true
 
+struct Spot 
+{
+    char de[STRLEN];   // Skimmer callsign
+    char dx[STRLEN];   // Spotted call
+    time_t time;       // Spot timestamp in epoch format
+    int snr;           // SNR for spotcount
+    double freq;       // Spot frequency
+    bool reference;    // Originates from a reference skimmer
+    bool analyzed;     // Already analyzed
+};
+
+struct Bandinfo
+{
+    char name[STRLEN];       // Human friendly name of band
+    long count;          // Number of analyzed spots
+    bool active;       // Heard from in MAXSILENCE seconds or less
+    double avadj;       // Average deviation as factor
+    double avdev;       // Average deviation in ppm
+    double absavdev;    // Absolute average deviation in ppm
+    time_t last;        // Most recent spot analyzed
+};
+
+struct Skimmer
+{
+    char name[STRLEN];  // Skimmer callsign
+    bool reference;     // Is a reference skimmer
+    struct Bandinfo band[BANDS];
+};
+
+void printstatus(char *string, int line)
+{
+    printf("\033[%d;H", 21 + line);
+    printf("%s", string);
+    for (int i = strlen(string); i < 80; i++)
+        printf(" ");
+}
+
+static struct Spot pipeline[SPOTSWINDOW];
+static struct Skimmer skimmer[MAXSKIMMERS];
+static int Skimmers = 0;
+
+void printstatuscall(char *call, int line)
+{
+    for (int skimpos = 0; skimpos < Skimmers; skimpos++)
+    {
+        if (strcmp(call, skimmer[skimpos].name) == 0)
+        {
+            int j  = line;
+            for (int band = 0; band < BANDS; band++)
+            {
+                if (skimmer[skimpos].band[band].active)
+                {
+                    printf("\033[%d;H", 24 + j++);
+                    printf("%s: %s %.2fppm", skimmer[skimpos].name, 
+                        skimmer[skimpos].band[band].name, skimmer[skimpos].band[band].avdev); 
+                }
+            }
+            for (int k = j; k < 6; k++)
+            {
+                printf("\033[%d;H                       ", 24 + j++);
+            }
+        }
+    }
+}
+
+int fqbandindex(double freq)
+{
+    switch ((int)round(freq / 1000.0))
+    {
+        case 2: // 160m
+            return 0;
+        case 3:
+        case 4: // 80m
+            return 1;
+        case 5: // 60m
+            return 2;
+        case 7: // 40m
+            return 3;
+        case 10: // 30m
+            return 4;
+        case 14: // 20m
+            return 5;
+        case 18: // 17m
+            return 6;
+        case 21: // 15m
+            return 7;
+        case 25: // 12m
+            return 8;
+        case 28: // 10m
+        case 29:
+        case 30:
+            return 9;
+        case 50: // 6m
+        case 51:
+        case 52:
+        case 53:
+        case 54:
+            return 10;
+        case 144: // 2m
+        case 145:
+        case 146:
+            return 11;
+        default:
+            return -1;
+    }
+} 
+
 int main(int argc, char *argv[])
 {
-    struct Spot 
-    {
-        char de[STRLEN];   // Skimmer callsign
-        char dx[STRLEN];   // Spotted call
-        time_t time;       // Spot timestamp in epoch format
-        int snr;           // SNR for spotcount
-        double freq;       // Spot frequency
-        bool reference;    // Originates from a reference skimmer
-        bool analyzed;     // Already analyzed
-    };
-
-    struct Skimmer
-    {
-        char name[STRLEN];  // Skimmer callsign
-        double avadj;       // Average deviation as factor
-        double avdev;       // Average deviation in ppm
-        double absavdev;    // Absolute average deviation in ppm
-        int count;          // Number of analyzed spots
-        time_t last;        // Most recent spot analyzed
-        bool reference;     // Is a reference skimmer
-        bool inactive;       // If not heard from for MAXSILENCE seconds
-    };
-
-    void printstatus(char *string, int line)
-    {
-        printf("\033[%d;H", 18 + line);
-        printf("%s", string);
-        for (int i = strlen(string); i < 80; i++)
-            printf(" ");
-    }
-
-    printf("Connecting to server...\n");
     void *context = zmq_ctx_new();
     void *requester = zmq_socket(context, ZMQ_SUB);
     zmq_connect(requester, "tcp://138.201.156.239:5566");
     (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
     char buffer[BUFLEN], tmpstring[BUFLEN];
     char referenceskimmer[MAXREF][STRLEN];
-    int c, spp = 0, skimmers = 0, referenceskimmers = 0;
+    int c, spp = 0, referenceskimmers = 0;
     long long int totalspots = 0; // , usedspots = 0;
     FILE *fr;
     bool debug = DEBUG;
+    const char *bandname[] = {"160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m" };
     
-    struct Spot pipeline[SPOTSWINDOW];
-    struct Skimmer skimmer[MAXSKIMMERS];
+    printf("Connecting to server...\n");
 
     while ((c = getopt(argc, argv, "d")) != -1)
     {
@@ -106,13 +182,21 @@ int main(int argc, char *argv[])
     for (int i = 0; i < SPOTSWINDOW; i++)
         pipeline[i].analyzed = true;
     
+    for (int i = 0; i < MAXSKIMMERS; i++)
+    {
+        skimmer[i].name[0]  = 0;
+        for (int j = 0; j < BANDS; j++)
+        {
+            skimmer[i].band[j].active = false;
+            // skimmer[i].band[j].avdev = 1.0;
+            // skimmer[i].band[j].avadj = 1.0;
+            strcpy(skimmer[i].band[j].name, bandname[j]);            
+        }
+    }
+
+
     if (debug)
     {
-        for (int i = 0; i < MAXSKIMMERS; i++)
-        {
-            skimmer[i].avadj = 1.0;
-            skimmer[i].name[0]  = 0;
-        }
         printf("\033c");
     }
 
@@ -202,6 +286,8 @@ int main(int argc, char *argv[])
                     // in the pipeline
                     if (reference)
                     {                    
+                        printstatuscall("F6IIT", 0);
+                        
                         for (int i = 0; i < SPOTSWINDOW; i++)
                         {
                             // delta is frequency deviation in kHz
@@ -209,6 +295,8 @@ int main(int argc, char *argv[])
                             double deltappm = 1000000.0 * deltakhz / freq;
                             double adeltakhz = fabs(deltakhz);
                             double adeltappm = fabs(deltappm);
+                            
+                            int bandindex = fqbandindex(freq);
                             
                             // If pipeline entry is...
                             if (!pipeline[i].analyzed &&            // not yet analyzed
@@ -225,7 +313,7 @@ int main(int argc, char *argv[])
 
                                 // Check if this skimmer is already in list
                                 int skimpos = -1;
-                                for (int j = 0; j < skimmers; j++)
+                                for (int j = 0; j < Skimmers; j++)
                                 {
                                     if (strcmp(pipeline[i].de, skimmer[j].name) == 0)
                                     {
@@ -235,19 +323,19 @@ int main(int argc, char *argv[])
                                 }
 
                                 if (skimpos != -1) // if in the list, update it
-                                {
+                                {                                    
                                     // First order IIR filtering of deviation
                                     // Time constant inversely proportional to 
                                     // frequency normalized at 14MHz
                                     const double tc = 50.0;
                                     const double basefq = 14000.0;
                                     double factor = freq / (tc * basefq);
-                                    skimmer[skimpos].avadj = 
-                                        (1.0 - factor) * skimmer[skimpos].avadj + 
+                                    skimmer[skimpos].band[bandindex].avadj = 
+                                        (1.0 - factor) * skimmer[skimpos].band[bandindex].avadj + 
                                         factor * pipeline[i].freq / freq;
 
-                                    skimmer[skimpos].avdev = 
-                                        (1.0 - factor) * skimmer[skimpos].avdev + factor * deltappm;
+                                    skimmer[skimpos].band[bandindex].avdev = 
+                                        (1.0 - factor) * skimmer[skimpos].band[bandindex].avdev + factor * deltappm;
 
                                     // if (fabs(newdev) > 0.5)
                                     // {
@@ -258,15 +346,16 @@ int main(int argc, char *argv[])
                                         // skimmer[skimpos].name, newdev, skimpos, skimmer[skimpos].avdev, i, pipeline[i].freq, freq);
                                     // }
                                         
-                                    skimmer[skimpos].count++;
-                                    skimmer[skimpos].last = pipeline[i].time;
-                                    if (skimmer[skimpos].inactive == true && debug)
+                                    skimmer[skimpos].band[bandindex].count++;
+                                    skimmer[skimpos].band[bandindex].last = pipeline[i].time;
+                                    if (!skimmer[skimpos].band[bandindex].active && debug)
                                     {
-                                        sprintf(tmpstring, "Skimmer %s marked not silent", skimmer[skimpos].name);
+                                        sprintf(tmpstring, "Skimmer %s marked active on %s", skimmer[skimpos].name, 
+                                            skimmer[skimpos].band[bandindex].name);
                                         printstatus(tmpstring, 1);
                                     }
 
-                                    skimmer[skimpos].inactive = false;
+                                    skimmer[skimpos].band[bandindex].active = true;
                                     // if (debug)
                                         // printf("Skimmer %-9s Dev %+6.2f\n", 
                                             // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
@@ -277,40 +366,57 @@ int main(int argc, char *argv[])
                                             // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
                                             // skimmer[skimpos].reference ? "+" : "");
                                         printf("\033[H");
-                                        for (int i = 0; i < 96; i++)
+                                        for (int i = 0; i < 95; i++)
                                         {
-                                            printf("%10s:%+6.2f ", 
-                                                skimmer[i].name, skimmer[i].avdev);
-                                                if ((i + 1) % 6 == 0)
-                                                    printf("\n");
+                                            double averr = 0.0;
+                                            int active = 0;
+                                            for (int j = 0; j < BANDS; j++)
+                                            {
+                                                if (skimmer[i].band[j].active)
+                                                {
+                                                    averr += skimmer[i].band[j].avdev;
+                                                    active++;
+                                                }
+                                            }
+                                            if (active != 0)
+                                                printf("%10s:%+6.2lf(%d)", skimmer[i].name, averr / active, active);
+                                            else 
+                                            {
+                                                if (i < Skimmers)
+                                                    printf("%10s:%9s", skimmer[i].name, "");
+                                                else
+                                                    printf("%10s %9s", "", "");
+                                            }
                                                 
+                                            if ((i + 1) % 5 == 0)
+                                                printf("\n");                                                
                                         }
                                         printf("\n");
                                     }
                                 }
                                 else // If new skimmer, add it to list
                                 {
-                                    if (skimmers >= MAXSKIMMERS) 
+                                    if (Skimmers >= MAXSKIMMERS) 
                                     {
-                                        fprintf(stderr, "Skimmer list overflow (%d). Clearing list.\n", skimmers);
-                                        skimmers = 0;                                        
+                                        fprintf(stderr, "Skimmer list overflow (%d). Clearing list.\n", Skimmers);
+                                        Skimmers = 0;                                        
                                     }
                                     // if (strcmp(pipeline[i].de, "SM7IUN") == 0)
                                     // {
-                                        // printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", skimmers + 1, i, pipeline[i].de);
+                                        // printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", Skimmers + 1, i, pipeline[i].de);
                                     // }
 
-                                    strcpy(skimmer[skimmers].name, pipeline[i].de);
-                                    skimmer[skimmers].avadj = 1.0; // Guess zero error as start
-                                    skimmer[skimmers].avdev = 0.0; // Guess zero error as start
-                                    skimmer[skimmers].count = 1;
-                                    skimmer[skimmers].last = pipeline[i].time;
-                                    skimmer[skimmers].reference = pipeline[i].reference;
-                                    skimmer[skimpos].inactive = false;
+                                    strcpy(skimmer[Skimmers].name, pipeline[i].de);
+                                    skimmer[Skimmers].band[bandindex].avadj = 1.0; // Guess zero error as start
+                                    skimmer[Skimmers].band[bandindex].avdev = 0.0; // Guess zero error as start
+                                    skimmer[Skimmers].band[bandindex].count = 1;
+                                    skimmer[Skimmers].band[bandindex].last = pipeline[i].time;
+                                    skimmer[Skimmers].reference = pipeline[i].reference;
+                                    skimmer[Skimmers].band[bandindex].active = true;
 
-                                    skimmers++;
+                                    Skimmers++;
                                     // if (debug)
-                                        // fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
+                                        // fprintf(stderr, "Found skimmer #%d: %s \n", Skimmers, pipeline[i].de);
                                 }
                             }
                         }
@@ -330,22 +436,28 @@ int main(int argc, char *argv[])
                 }
             }
         }
-        // Check for silent skimmers once per minute
+        // Check for inactive skimmers once per minute
         time_t nowtime;
         time(&nowtime);
         // if (nowtime % 60 == MAXSILENCE) // Once per minute
         {
-            for (int i = 0; i < skimmers; i++)
-                if (difftime(nowtime, skimmer[i].last) >= MAXSILENCE)
+            for (int i = 0; i < Skimmers; i++)
+            {
+                for (int j = 0; j < BANDS; j++)
                 {
-                    if (!skimmer[i].inactive && debug)
+                    if (difftime(nowtime, skimmer[i].band[j].last) >= MAXSILENCE)
                     {
-                        sprintf(tmpstring, "Skimmer %s marked silent - no spots for %.0f", 
-                            skimmer[i].name, difftime(nowtime, skimmer[i].last));
-                        printstatus(tmpstring, 0);
+                        if (skimmer[i].band[j].active && debug)
+                        {
+                            sprintf(tmpstring, "Skimmer %s marked inactive on %s - no spots for %.0f seconds", 
+                                skimmer[i].name, skimmer[i].band[j].name,
+                                difftime(nowtime, skimmer[i].band[j].last));
+                            printstatus(tmpstring, 0);
+                        }
+                        skimmer[i].band[j].active = false;
                     }
-                    skimmer[i].inactive = true;
                 }
+            }
         }
     }
     
