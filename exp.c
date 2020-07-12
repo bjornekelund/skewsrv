@@ -112,7 +112,7 @@ void printstatuscall(char *call1, char *call2, char *call3, char *call4, int lin
                 }
                 for (int k = j; k < 8; k++)
                 {
-                    printf("\033[%d;H                       ", 24 + j++);
+                    printf("\033[%d;%dH                       ", 24 + j++, col);
                 }
                 col += 25;
             }
