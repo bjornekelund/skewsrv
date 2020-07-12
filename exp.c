@@ -10,20 +10,33 @@
 #define BUFLEN 256
 #define STRLEN 16
 #define TSLEN 20
-#define MAXAPART 30
-#define MAXSKIMMERS 500
-#define SPOTSWINDOW 1000
-#define MAXREF 50
-#define MAXERR 0.5
-#define MINSNR 6
-#define MINFREQ 1800.0
 #define CW 1
 #define CQ 1
 #define DX 2
 #define REFFILENAME "reference"
 
+// Maximum number of skimmers. Overflow is handled gracefully.
+#define MAXSKIMMERS 500
+// Maximum number of reference spots. Overflow stops reading list.
+#define MAXREF 50
+// Window of recent spots
+#define SPOTSWINDOW 1000
+
+// Maximum time to reference spot for spot to qualify
+#define MAXAPART 30
+// Maximum error in kHz and PPM for spot to qualify
+// 0.5kHz is 18ppm on 10m
+#define MAXERRKHZ 0.5
+// 60ppm is 0.11kHz on 160m
+#define MAXERRPPM 60
+// Maximum SNR for spot to qualify
+#define MINSNR 6
+// Minimum frequency for spot to qualify
+#define MINFREQ 1800.0
+// Maximum seconds since last spot to be considered active
+#define MAXSILENCE 60
+
 #define DEBUG true
-// #define FMT "%Y-%m-%d %H:%M:%S"
 
 int main(void)
 {
@@ -41,20 +54,32 @@ int main(void)
     struct Skimmer
     {
         char name[STRLEN];  // Skimmer callsign
-        double avadj;       // Average deviation in ppm
+        double avadj;       // Average deviation as factor
+        double avdev;       // Average deviation in ppm
         double absavdev;    // Absolute average deviation in ppm
         int count;          // Number of analyzed spots
-        time_t first;       // First spot analyzed
         time_t last;        // Most recent spot analyzed
         bool reference;     // Is a reference skimmer
+        bool inactive;       // If not heard from for MAXSILENCE seconds
     };
+
+    void printstatus(char *string, int line)
+    {
+        if (DEBUG)
+        {
+            printf("\033[%d;H", 18 + line);
+            printf("%s", string);
+            for (int i = strlen(string); i < 80; i++)
+                printf(" ");
+        }
+    }
 
     printf("Connecting to server...\n");
     void *context = zmq_ctx_new();
     void *requester = zmq_socket(context, ZMQ_SUB);
     zmq_connect(requester, "tcp://138.201.156.239:5566");
     (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
-    char buffer[BUFLEN];
+    char buffer[BUFLEN], tmpstring[BUFLEN];
     char referenceskimmer[MAXREF][STRLEN];
     int spp = 0, skimmers = 0, referenceskimmers = 0;
     long long int totalspots = 0; // , usedspots = 0;
@@ -111,14 +136,11 @@ int main(void)
     while (true) // Replace with close down signal
     {
         int size = zmq_recv(requester, buffer, BUFLEN, 0);
-        // memcpy(string, buffer, size);
-        // string[size] = 0;
+        buffer[size] = 0;
         
-        if (strncmp(buffer, "PROD_SPOT_", 10) == 0) 
+        if (strncmp(buffer, "PROD_SPOT", 9) == 0) 
         {
             size = zmq_recv(requester, buffer, BUFLEN, 0);
-            // memcpy(string, buffer, size);
-            // string[size] = 0;
             buffer[size] = 0;
             //  QRG     call    spotter               spotted         received
             // 7029.00|DL2DXA/W|9A1CIG|1|1|10|20|1|1|1594465469081|1594465469280|rx1
@@ -127,147 +149,189 @@ int main(void)
             int snr, speed, spot_type, mode, ntp;
             time_t jstime1, jstime2, spottime;
             double freq, base_freq;
-            struct tm *stime;
 
             int got = sscanf(buffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%ld|%ld|%s",
                 &freq, dx, de, &spot_type, &base_freq, &snr, &speed, &mode, &ntp, &jstime1, &jstime2, extradata);
 
-            spottime = jstime2 / 1000;
-            
-            if (DEBUG)
+            if (got == 12) 
             {
-                stime = gmtime(&spottime);
-                (void)strftime(timestring, TSLEN, "%Y-%m-%d %H:%M:%S", stime);
-
-                // printf("%s\n", string);
-                // printf("got=%2d Freq=%7.1f DX=%9s DE=%9s type=%2d bf=%2.1f SNR=%2d SP=%2d md=%2d ntp=%1d t=%s EX=%s\n", 
-                    // got, freq, dx, de, spot_type, base_freq, snr, speed, mode, ntp, timestring, extradata);
-            }
-            
-            totalspots++;
-            
-            // If SNR is sufficient and frequency OK and mode is right
-            if (snr >= MINSNR && freq >= MINFREQ && mode == CW && (spot_type == CQ || spot_type == DX))
-            {
-                // Check if this spot is from a reference skimmer
-                bool reference = false;
-                for (int i = 0; i < referenceskimmers; i++)
+                spottime = jstime2 / 1000;
+                
+                if (DEBUG)
                 {
-                    if (strcmp(de, referenceskimmer[i]) == 0)
-                    {
-                        reference = true;
-                        break;
-                    }
+                    struct tm *stime;
+                    stime = gmtime(&spottime);
+                    (void)strftime(timestring, TSLEN, "%Y-%m-%d %H:%M:%S", stime);
+
+                    // printf("%s\n", string);
+                    // printf("got=%2d Freq=%7.1f DX=%9s DE=%9s type=%2d bf=%2.1f SNR=%2d SP=%2d md=%2d ntp=%1d t=%s EX=%s\n", 
+                        // got, freq, dx, de, spot_type, base_freq, snr, speed, mode, ntp, timestring, extradata);
                 }
-
-                // If it is reference spot, use it to check all un-analyzed spots of the same call and 
-                // in the pipeline
-                if (reference)
-                {                    
-                    for (int i = 0; i < SPOTSWINDOW; i++)
+                
+                totalspots++;
+                
+                // If SNR is sufficient and frequency OK and mode is right
+                if (snr >= MINSNR && freq >= MINFREQ && mode == CW && (spot_type == CQ || spot_type == DX))
+                {
+                    // Check if this spot is from a reference skimmer
+                    bool reference = false;
+                    for (int i = 0; i < referenceskimmers; i++)
                     {
-                        // delta is frequency deviation in kHz
-                        double delta = pipeline[i].freq - freq;
-                        double adelta = delta > 0 ? delta : -delta;
-                        
-                        if (!pipeline[i].analyzed && strcmp(pipeline[i].dx, dx) == 0 &&
-                            adelta <= MAXERR && strcmp(pipeline[i].de, de) != 0 &&
-                            abs((int)difftime(pipeline[i].time, spottime)) <= MAXAPART)
+                        if (strcmp(de, referenceskimmer[i]) == 0)
                         {
-                            // We have found a valid, unanalyzed spot in pipeline[i]
-                            // The data of the reference spot is in freq and de.
+                            reference = true;
+                            break;
+                        }
+                    }
+
+                    // If it is reference spot, use it to check all un-analyzed spots of the same call and 
+                    // in the pipeline
+                    if (reference)
+                    {                    
+                        for (int i = 0; i < SPOTSWINDOW; i++)
+                        {
+                            // delta is frequency deviation in kHz
+                            double deltakhz = pipeline[i].freq - freq;
+                            double deltappm = 1000000.0 * deltakhz / freq;
+                            double adeltakhz = fabs(deltakhz);
+                            double adeltappm = fabs(deltappm);
                             
-                            pipeline[i].analyzed = true; // To only analyze each spot once
-
-                            // usedspots++;
-
-                            // Check if this skimmer is already in list
-                            int skimpos = -1;
-                            for (int j = 0; j < skimmers; j++)
+                            // If pipeline entry is...
+                            if (!pipeline[i].analyzed &&            // not yet analyzed
+                                strcmp(pipeline[i].dx, dx) == 0 &&  // has same call as reference spot
+                                adeltakhz <= MAXERRKHZ &&           // has low enough absolute deviation
+                                adeltappm < MAXERRPPM &&            // has low enough relative deviation
+                                strcmp(pipeline[i].de, de) != 0 &&  // is not from same reference skimmer
+                                abs((int)difftime(pipeline[i].time, spottime)) <= MAXAPART) // is close enough in time
                             {
-                                if (strcmp(pipeline[i].de, skimmer[j].name) == 0)
-                                {
-                                    skimpos = j;
-                                    break;
-                                }
-                            }
+                                // ..then we have a qualified spot in pipeline[i]
+                                // The data of the reference spot is in freq and de.
+                                
+                                pipeline[i].analyzed = true; // To only analyze each spot once
 
-                            if (skimpos != -1) // if in the list, update it
-                            {
-                                // First order IIR filtering of deviation
-                                // Time constant inversely proportional to 
-                                // frequency normalized at 14MHz
-                                const double tc = 50.0;
-                                const double basefq = 14000.0;
-                                double factor = basefq / (tc * freq);
-                                skimmer[skimpos].avadj = 
-                                    (1.0 - factor) * skimmer[skimpos].avadj + 
-                                    factor * pipeline[i].freq / freq;
-
-                                skimmer[skimpos].count++;
-                                if (pipeline[i].time > skimmer[skimpos].last)
-                                    skimmer[skimpos].last = pipeline[i].time;
-                                if (pipeline[i].time < skimmer[skimpos].first)
-                                    skimmer[skimpos].first = pipeline[i].time;
-                                // if (DEBUG)
-                                    // printf("Skimmer %-9s Dev %+6.2f\n", 
-                                        // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
-                                        // 1000000.0 * (skimmer[skimpos].avadj - 1.0));
-                                if (DEBUG && skimpos < 96)
+                                // Check if this skimmer is already in list
+                                int skimpos = -1;
+                                for (int j = 0; j < skimmers; j++)
                                 {
-                                    // printf("Skimmer %-9s Dev %+5.2f %s\n", 
-                                        // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
-                                        // skimmer[skimpos].reference ? "+" : "");
-                                    printf("\033[H");
-                                    for (int i = 0; i < 96; i++)
+                                    if (strcmp(pipeline[i].de, skimmer[j].name) == 0)
                                     {
-                                        printf("%10s:%+6.2f ", 
-                                            skimmer[i].name, 1000000.0 * (skimmer[i].avadj - 1.0));
-                                            if ((i + 1) % 6 == 0)
-                                                printf("\n");
-                                            
+                                        skimpos = j;
+                                        break;
                                     }
-                                    printf("\n");
                                 }
-                            }
-                            else // If new skimmer, add it to list
-                            {
-                                if (skimmers >= MAXSKIMMERS) 
-                                {
-                                    fprintf(stderr, "Skimmer list overflow (%d). Clearing list.\n", skimmers);
-                                    skimmers = 0;                                        
-                                }
-                                // if (strcmp(pipeline[i].de, "SM7IUN") == 0)
-                                // {
-                                    // printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", skimmers + 1, i, pipeline[i].de);
-                                // }
 
-                                strcpy(skimmer[skimmers].name, pipeline[i].de);
-                                skimmer[skimmers].avadj = 1.0; // Guess zero error as start
-                                skimmer[skimmers].count = 1;
-                                skimmer[skimmers].first = pipeline[i].time;
-                                skimmer[skimmers].last = pipeline[i].time;
-                                skimmer[skimmers].reference = pipeline[i].reference;
-                                skimmers++;
-                                // if (DEBUG)
-                                    // fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
+                                if (skimpos != -1) // if in the list, update it
+                                {
+                                    // First order IIR filtering of deviation
+                                    // Time constant inversely proportional to 
+                                    // frequency normalized at 14MHz
+                                    const double tc = 50.0;
+                                    const double basefq = 14000.0;
+                                    double factor = freq / (tc * basefq);
+                                    skimmer[skimpos].avadj = 
+                                        (1.0 - factor) * skimmer[skimpos].avadj + 
+                                        factor * pipeline[i].freq / freq;
+
+                                    skimmer[skimpos].avdev = 
+                                        (1.0 - factor) * skimmer[skimpos].avdev + factor * deltappm;
+
+                                    // if (fabs(newdev) > 0.5)
+                                    // {
+                                        // printf("\033[18;H");
+                                        // printf("                                                                                                  ");
+                                        // printf("\033[18;H");
+                                        // printf("skimmer=%s newdev=%.2f skimmer[%d].avdev=%.2f pipeline[%d].freq=%.1f freq=%.1f\n", 
+                                        // skimmer[skimpos].name, newdev, skimpos, skimmer[skimpos].avdev, i, pipeline[i].freq, freq);
+                                    // }
+                                        
+                                    skimmer[skimpos].count++;
+                                    skimmer[skimpos].last = pipeline[i].time;
+                                    if (skimmer[skimpos].inactive == true)
+                                    {
+                                        sprintf(tmpstring, "Skimmer %s marked not silent", skimmer[i].name);
+                                        printstatus(tmpstring, 1);
+                                    }
+
+                                    skimmer[skimpos].inactive = false;
+                                    // if (DEBUG)
+                                        // printf("Skimmer %-9s Dev %+6.2f\n", 
+                                            // strcat(skimmer[skimpos].name, skimmer[skimpos].reference ? "*" : ""),
+                                            // 1000000.0 * (skimmer[skimpos].avadj - 1.0));
+                                    if (DEBUG && skimpos < 96)
+                                    {
+                                        // printf("Skimmer %-9s Dev %+5.2f %s\n", 
+                                            // skimmer[skimpos].name, 1000000.0 * (skimmer[skimpos].avadj - 1.0),
+                                            // skimmer[skimpos].reference ? "+" : "");
+                                        printf("\033[H");
+                                        for (int i = 0; i < 96; i++)
+                                        {
+                                            printf("%10s:%+6.2f ", 
+                                                skimmer[i].name, skimmer[i].avdev);
+                                                if ((i + 1) % 6 == 0)
+                                                    printf("\n");
+                                                
+                                        }
+                                        printf("\n");
+                                    }
+                                }
+                                else // If new skimmer, add it to list
+                                {
+                                    if (skimmers >= MAXSKIMMERS) 
+                                    {
+                                        fprintf(stderr, "Skimmer list overflow (%d). Clearing list.\n", skimmers);
+                                        skimmers = 0;                                        
+                                    }
+                                    // if (strcmp(pipeline[i].de, "SM7IUN") == 0)
+                                    // {
+                                        // printf("Creating new SM7IUN skimmer #%d. pipeline[%d].de=%s\n", skimmers + 1, i, pipeline[i].de);
+                                    // }
+
+                                    strcpy(skimmer[skimmers].name, pipeline[i].de);
+                                    skimmer[skimmers].avadj = 1.0; // Guess zero error as start
+                                    skimmer[skimmers].avdev = 0.0; // Guess zero error as start
+                                    skimmer[skimmers].count = 1;
+                                    skimmer[skimmers].last = pipeline[i].time;
+                                    skimmer[skimmers].reference = pipeline[i].reference;
+                                    skimmer[skimpos].inactive = false;
+
+                                    skimmers++;
+                                    // if (DEBUG)
+                                        // fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
+                                }
                             }
                         }
                     }
+
+                    // Save new spot in pipeline
+                    strcpy(pipeline[spp].de, de);
+                    strcpy(pipeline[spp].dx, dx);
+                    pipeline[spp].freq = freq;
+                    pipeline[spp].snr = snr;
+                    pipeline[spp].reference = reference;
+                    pipeline[spp].analyzed = false;
+                    pipeline[spp].time = spottime;
+
+                    // Move pointer and wrap around at top of pipeline
+                    spp = (spp + 1) % SPOTSWINDOW;
                 }
-
-                // Save new spot in pipeline
-                strcpy(pipeline[spp].de, de);
-                strcpy(pipeline[spp].dx, dx);
-                pipeline[spp].freq = freq;
-                pipeline[spp].snr = snr;
-                pipeline[spp].reference = reference;
-                pipeline[spp].analyzed = false;
-                pipeline[spp].time = spottime;
-
-                // Move pointer and wrap around at top of pipeline
-                spp = (spp + 1) % SPOTSWINDOW;
             }
+        }
+        // Check for silent skimmers once per minute
+        time_t nowtime;
+        time(&nowtime);
+        // if (nowtime % 60 == MAXSILENCE) // Once per minute
+        {
+            for (int i = 0; i < skimmers; i++)
+                if (difftime(nowtime, skimmer[i].last) > MAXSILENCE)
+                {
+                    if (!skimmer[i].inactive)
+                    {
+                        sprintf(tmpstring, "Skimmer %s marked silent - no spots for %.0f", 
+                            skimmer[i].name, difftime(nowtime, skimmer[i].last));
+                        printstatus(tmpstring, 0);
+                    }
+                    skimmer[i].inactive = true;
+                }
         }
     }
     
