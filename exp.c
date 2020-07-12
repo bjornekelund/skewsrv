@@ -248,7 +248,7 @@ int main(void)
                                     skimmer[skimpos].last = pipeline[i].time;
                                     if (skimmer[skimpos].inactive == true)
                                     {
-                                        sprintf(tmpstring, "Skimmer %s marked not silent", skimmer[i].name);
+                                        sprintf(tmpstring, "Skimmer %s marked not silent", skimmer[skimpos].name);
                                         printstatus(tmpstring, 1);
                                     }
 
