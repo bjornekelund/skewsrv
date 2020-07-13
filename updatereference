@@ -1,0 +1,62 @@
+#!/bin/bash
+# Calculate a new set of reference skimmers for the next night's run
+# Built to be called from script updateweb
+
+# Move to correct folder to allow cron execution on RPi
+[ -d "/home/pi/rbnskew" ] && cd /home/pi/rbnskew
+
+DATE=`date -u --date="1 days ago" +%Y%m%d`
+REFFILE="reference"
+
+echo "Job started "`date -u "+%F %T" `
+START=$SECONDS
+
+# Check if we already did the work for today, if so, exit
+[ -f $FOLDER/done ] || echo "Never" > .updaterefdone
+if [ "$DATE" == "`cat .updatrefdone`" ]; then
+    echo "Nothing to do."
+    exit
+fi
+
+# Do the work
+echo "Downloading RBN data for "$DATE
+
+wget --quiet --no-hsts http://www.reversebeacon.net/raw_data/dl.php?f=$DATE -O rbndata.zip
+
+FILESIZE=$(stat -c%s $FOLDER/rbndata.zip)
+if [[ $FILESIZE != "0" ]]; then
+    gunzip < rbndata.zip > rbndata.csv
+    echo "Downloaded yesterday's "$((`wc -l < $FOLDER/rbndata.csv` - 2))" spots into rbndata.csv"
+	echo "-"
+	printf "Selecting reference skimmers..."
+	./rbnskew -wq -f $FOLDER/rbndata.csv -c anchors > rbndata.txt
+
+	echo "# Automatically generated reference file" > $REFFILE
+
+	#printf "# Frequency controlled skimmers\nAC0C\nWB6BEE\nKM3T\nOE9GHV\nSM7IUN\nCX6VM\n3B8CW\nJO1YYP\n" >> $REFFILE
+
+	echo "# Skimmers with 0.0ppm deviation and more than 200 qualified spots" >> $REFFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) < 0.1 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+
+	echo "# Skimmers with 0.1ppm deviation and more than 200 qualified spots" >> $REFFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.1 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+
+	echo "# Skimmers with 0.2ppm deviation and more than 200 qualified spots" >> $REFFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.2 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+
+	printf "done.\n"
+
+    echo $DATE > .updaterefdone
+	echo "Job took $((SECONDS - START)) and ended "`date -u "+%F %T" `
+else
+    echo "Could not download yesterday's RBN data!"
+    echo "Job failed "`date -u "+%F %T" `
+    exit
+fi
+
+
+
+
+
+
+exit
