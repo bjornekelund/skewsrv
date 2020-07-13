@@ -3,9 +3,9 @@
 # Built to be called from script updateweb
 
 # Move to correct folder to allow cron execution on RPi
-[ -d "/home/pi/rbnskew" ] && cd /home/pi/rbnskew
+[ -d "/home/pi/rbn-server-skew" ] && cd /home/pi/rbn-server-skew
 
-FOLDER=rbndata
+FOLDER="rbndata"
 DATE=`date -u --date="1 days ago" +%Y%m%d`
 OLDDATE=`date -u --date="10 days ago" +%Y%m%d`
 REFFILE="reference"
@@ -16,6 +16,8 @@ ZIPFILE=$FOLDER/rbndata.zip
 CSVFILE=$FOLDER/rbndata.csv
 TOKEN=$FOLDER/refupdated
 
+[ -d $FOLDER ] || mkdir $FOLDER
+
 echo "Job started "`date -u "+%F %T" `
 START=$SECONDS
 
@@ -24,7 +26,6 @@ echo "Never" > $TOKEN
 
 # Check if we already did the work for
 # today, if so, exit
-[ -d $FOLDER ] || mkdir $FOLDER
 [ -f $TOKEN ] || echo "Never" > $TOKEN
 if [ "$DATE" == "`cat $TOKEN`" ]; then
     echo "Nothing to do."
