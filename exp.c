@@ -184,12 +184,45 @@ int fqbandindex(double freq)
     }
 } 
 
+void updatereferences()
+{
+    FILE *fr;
+    char line[BUFLEN], tempstring[BUFLEN];
+    
+    fr = fopen(REFFILENAME, "r");
+
+    if (fr == NULL) 
+    {
+        fprintf(stderr, "Can not open file \"%s\". Abort.\n", REFFILENAME);
+        abort();
+    }
+
+    while (fgets(line, BUFLEN, fr) != NULL)
+    {
+        if (sscanf(line, "%s", tempstring) == 1)
+        {
+            // Don't include comment lines
+            if (tempstring[0] != '#')
+            {
+                strcpy(referenceskimmer[Referenceskimmers], tempstring);
+                Referenceskimmers++;
+                if (Referenceskimmers >= MAXREF) 
+                {
+                    fprintf(stderr, "Overflow: Last reference skimmer read is %s.\n", tempstring);
+                    break;
+                }
+            }
+        }
+    }
+
+    (void)fclose(fr);
+}
+
 int main(int argc, char *argv[])
 {
     char buffer[BUFLEN], tmpstring[BUFLEN];
-    int c, spp = 0;
+    int c, spp = 0, lastday = 0;
     time_t lasttime = 0;
-    FILE *fr;
     bool debug = true;
     long long int lastspotcount = 0; 
     double spotsperminute = 0.0;
@@ -215,6 +248,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    updatereferences();
+
     if (debug)
         printf("Connecting to server...\n");
 
@@ -231,35 +266,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    fr = fopen(REFFILENAME, "r");
-
-    if (fr == NULL) 
-    {
-        fprintf(stderr, "Can not open file \"%s\". Abort.\n", REFFILENAME);
-        return 1;
-    }
-
-    while (fgets(buffer, BUFLEN, fr) != NULL)
-    {
-        char tempstring[BUFLEN];
-        if (sscanf(buffer, "%s", tempstring) == 1)
-        {
-            // Don't include comment lines
-            if (tempstring[0] != '#')
-            {
-                strcpy(referenceskimmer[Referenceskimmers], tempstring);
-                Referenceskimmers++;
-                if (Referenceskimmers >= MAXREF) 
-                {
-                    fprintf(stderr, "Overflow: Last reference skimmer read is %s.\n", tempstring);
-                    (void)fclose(fr);
-                    return 1;
-                }
-            }
-        }
-    }
-
-    (void)fclose(fr);
 
     if (debug)
     {
@@ -514,6 +520,15 @@ int main(int argc, char *argv[])
                 }
                 skimmer[si].active = skimactive;
             }
+        }
+
+        // Read updated list of reference skimmers at 00:30Z every night
+        struct tm curt;
+        curt = *gmtime(&nowtime);
+        if (curt.tm_hour == 0 && curt.tm_min == 30 && curt.tm_mday != lastday)
+        {
+            updatereferences();
+            lastday = curt.tm_mday;
         }
     }
     
