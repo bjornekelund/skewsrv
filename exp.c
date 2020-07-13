@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
             updatereferences();
 //            lastday = curt.tm_mday;
             lastday = curt.tm_hour;
-            sprintf(tmpstring, "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC",
+            sprintf(tmpstring, "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
             	curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, curt.tm_hour, curt.tm_min, curt.tm_sec);
 			printstatus(tmpstring, 3);
         }
