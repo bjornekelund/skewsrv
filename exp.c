@@ -506,7 +506,7 @@ int main(int argc, char *argv[])
                     }
                     skimactive |= skimmer[si].band[bi].active;
                 }
-                if (!skimactive)
+                if (!skimactive && skimmer[si].active)
                 {
                     sprintf(tmpstring, "Skimmer %s marked inactive - no spots for %.0f seconds                ", 
                         skimmer[si].call, difftime(nowtime, skimmer[si].last));
