@@ -5,15 +5,28 @@
 # Move to correct folder to allow cron execution on RPi
 [ -d "/home/pi/rbnskew" ] && cd /home/pi/rbnskew
 
+FOLDER=rbndata
 DATE=`date -u --date="1 days ago" +%Y%m%d`
+OLDDATE=`date -u --date="10 days ago" +%Y%m%d`
 REFFILE="reference"
+TEMPFILE=$FOLDER/$DATE.ref
+DELFILE=$FOLDER/$OLDDATE.ref
+RESULT=$FOLDER/rbndata.txt
+ZIPFILE=$FOLDER/rbndata.zip
+CSVFILE=$FOLDER/rbndata.csv
+TOKEN=$FOLDER/refupdated
 
 echo "Job started "`date -u "+%F %T" `
 START=$SECONDS
 
-# Check if we already did the work for today, if so, exit
-[ -f $FOLDER/done ] || echo "Never" > .updaterefdone
-if [ "$DATE" == "`cat .updatrefdone`" ]; then
+# Uncomment to execute always
+echo "Never" > $TOKEN
+
+# Check if we already did the work for
+# today, if so, exit
+[ -d $FOLDER ] || mkdir $FOLDER
+[ -f $TOKEN ] || echo "Never" > $TOKEN
+if [ "$DATE" == "`cat $TOKEN`" ]; then
     echo "Nothing to do."
     exit
 fi
@@ -21,42 +34,38 @@ fi
 # Do the work
 echo "Downloading RBN data for "$DATE
 
-wget --quiet --no-hsts http://www.reversebeacon.net/raw_data/dl.php?f=$DATE -O rbndata.zip
+wget --quiet --no-hsts http://www.reversebeacon.net/raw_data/dl.php?f=$DATE -O $ZIPFILE
 
-FILESIZE=$(stat -c%s $FOLDER/rbndata.zip)
+FILESIZE=$(stat -c%s $ZIPFILE)
 if [[ $FILESIZE != "0" ]]; then
-    gunzip < rbndata.zip > rbndata.csv
-    echo "Downloaded yesterday's "$((`wc -l < $FOLDER/rbndata.csv` - 2))" spots into rbndata.csv"
-	echo "-"
-	printf "Selecting reference skimmers..."
-	./rbnskew -wq -f $FOLDER/rbndata.csv -c anchors > rbndata.txt
+    gunzip < $ZIPFILE > $CSVFILE
+    echo "Downloaded yesterday's "$((`wc -l < $CSVFILE` - 2))" spots into $CSVFILE"
+	printf "Selecting list of reference skimmers..."
+	../rbnskew/rbnskew -wqs -f $CSVFILE -c anchors > $RESULT
 
-	echo "# Automatically generated reference file" > $REFFILE
+	echo "# Automatically generated reference file" > $TEMPFILE
 
-	#printf "# Frequency controlled skimmers\nAC0C\nWB6BEE\nKM3T\nOE9GHV\nSM7IUN\nCX6VM\n3B8CW\nJO1YYP\n" >> $REFFILE
+	#printf "# Frequency controlled skimmers\nAC0C\nWB6BEE\nKM3T\nOE9GHV\nSM7IUN\nCX6VM\n3B8CW\nJO1YYP\n" >> $TEMPFILE
 
-	echo "# Skimmers with 0.0ppm deviation and more than 200 qualified spots" >> $REFFILE
-	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) < 0.1 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+	echo "# Skimmers with 0.0ppm deviation and more than 200 qualified spots" >> $TEMPFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) < 0.1 && $4 > 200){print $2;}}' $RESULT | sed 's/*//g' >> $TEMPFILE
 
-	echo "# Skimmers with 0.1ppm deviation and more than 200 qualified spots" >> $REFFILE
-	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.1 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+	echo "# Skimmers with 0.1ppm deviation and more than 200 qualified spots" >> $TEMPFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.1 && $4 > 200){print $2;}}' $RESULT | sed 's/*//g' >> $TEMPFILE
 
-	echo "# Skimmers with 0.2ppm deviation and more than 200 qualified spots" >> $REFFILE
-	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.2 && $4 > 200){print $2;}}' rbndata.txt | sed 's/*//g' >> $REFFILE
+	echo "# Skimmers with 0.2ppm deviation and more than 200 qualified spots" >> $TEMPFILE
+	gawk '{if ($1 == "#" && ($3 >= 0.0 ? $3 : -$3) == 0.2 && $4 > 200){print $2;}}' $RESULT | sed 's/*//g' >> $TEMPFILE
 
 	printf "done.\n"
-
-    echo $DATE > .updaterefdone
-	echo "Job took $((SECONDS - START)) and ended "`date -u "+%F %T" `
+	cp $TEMPFILE $REFFILE
+    echo $DATE > $TOKEN
+	echo "Deleting "$DELFILE
+	rm -f $DELFILE
+	echo "Job took $((SECONDS - START)) seconds and ended "`date -u "+%F %T" `
 else
     echo "Could not download yesterday's RBN data!"
     echo "Job failed "`date -u "+%F %T" `
     exit
 fi
-
-
-
-
-
 
 exit
