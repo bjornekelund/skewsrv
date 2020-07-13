@@ -125,8 +125,8 @@ void printstatuscall(char *call1, char *call2, char *call3, char *call4, int lin
                     if (skimmer[skimpos].band[band].active)
                     {
                         printf("\033[%d;%dH", 20 + j, col);
-                        printf("%10s:%3s%+6.2fppm", skimmer[skimpos].call,
-                            bandname[band], skimmer[skimpos].band[band].avdev);
+                        printf("%s:%3s%+6.2fppm(%ld)", skimmer[skimpos].call,
+                            bandname[band], skimmer[skimpos].band[band].avdev, skimmer[skimpos].band[band].count);
                         j++;
                     }
                 }
@@ -135,7 +135,7 @@ void printstatuscall(char *call1, char *call2, char *call3, char *call4, int lin
                     printf("\033[%d;%dH", 20 + k, col);
                     printf("                        ");
                 }
-                col += 25;
+                col += 29;
             }
         }
     }
@@ -365,7 +365,7 @@ int main(int argc, char *argv[])
                                     // First order IIR filtering of deviation
                                     // Time constant inversely proportional to
                                     // frequency normalized at 14MHz
-                                    double factor = freq / (TC * 14000.0);
+                                    double factor = sqrt(freq / 14000.0) / (double)TC; 
 
                                     skimmer[skimpos].band[bandindex].avdev =
                                         (1.0 - factor) * skimmer[skimpos].band[bandindex].avdev +
@@ -515,7 +515,7 @@ int main(int argc, char *argv[])
                             sprintf(tmpstring, "Skimmer %s marked inactive on %s - no spots for %.0f seconds         ",
                                 skimmer[si].call, bandname[bi],
                                 difftime(nowtime, skimmer[si].band[bi].last));
-                            printstatus(tmpstring, 3);
+                            printstatus(tmpstring, 0);
                         }
                     }
                     skimactive |= skimmer[si].band[bi].active;
@@ -532,12 +532,12 @@ int main(int argc, char *argv[])
 
         // Read updated list of reference skimmers at 00:30Z every night
         struct tm curt = *gmtime(&nowtime);
-//        if (curt.tm_hour == 0 && curt.tm_min == 30 && curt.tm_mday != lastday)
+        if (curt.tm_hour == 0 && curt.tm_min > 30 && curt.tm_mday != lastday)
         if (curt.tm_min > 30 && curt.tm_hour != lastday)
         {
             updatereferences();
-//            lastday = curt.tm_mday;
-            lastday = curt.tm_hour;
+            lastday = curt.tm_mday;
+            // lastday = curt.tm_hour;
             sprintf(tmpstring, "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
             	curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, curt.tm_hour, curt.tm_min, curt.tm_sec);
 			printstatus(tmpstring, 3);
