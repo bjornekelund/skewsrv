@@ -533,7 +533,7 @@ int main(int argc, char *argv[])
         // Read updated list of reference skimmers at 00:30Z every night
         struct tm curt = *gmtime(&nowtime);
         if (curt.tm_hour == 0 && curt.tm_min > 30 && curt.tm_mday != lastday)
-        if (curt.tm_min > 30 && curt.tm_hour != lastday)
+        // if (curt.tm_min > 30 && curt.tm_hour != lastday)
         {
             updatereferences();
             lastday = curt.tm_mday;
