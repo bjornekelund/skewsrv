@@ -41,6 +41,10 @@
 #define MAXINACT 300
 // Time constant in qualified spots of filter for error at 14MHz
 #define TC 50
+// Hour UTC to update list of reference skimmers every day
+#define REFUPDHOUR 0
+// Minute to update list of reference skimmers every day
+#define REFUPDMINUTE 30
 
 struct Spot 
 {
@@ -322,7 +326,8 @@ int main(int argc, char *argv[])
                     // spots of the same call and in the pipeline
                     if (reference)
                     {
-                        printstatuscall("F6IIT", "OK2EW", "DR4W", "SM6FMB", 4);
+                        if (debug)
+                            printstatuscall("F6IIT", "OK2EW", "DR4W", "SM6FMB", 4);
 
                         for (int pi = 0; pi < SPOTSWINDOW; pi++)
                         {
@@ -520,7 +525,7 @@ int main(int argc, char *argv[])
                     }
                     skimactive |= skimmer[si].band[bi].active;
                 }
-                if (!skimactive && skimmer[si].active)
+                if (!skimactive && skimmer[si].active && debug)
                 {
                     sprintf(tmpstring, "Skimmer %s marked inactive - no spots for %.0f seconds                ",
                         skimmer[si].call, difftime(nowtime, skimmer[si].last));
@@ -530,17 +535,22 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Read updated list of reference skimmers at 00:30Z every night
+        // Read updated list of reference skimmers once per day 
         struct tm curt = *gmtime(&nowtime);
-        if (curt.tm_hour == 0 && curt.tm_min > 30 && curt.tm_mday != lastday)
+        if (curt.tm_hour == REFUPDHOUR && curt.tm_min > REFUPDMINUTE && curt.tm_mday != lastday)
         // if (curt.tm_min > 30 && curt.tm_hour != lastday)
         {
             updatereferences();
             lastday = curt.tm_mday;
             // lastday = curt.tm_hour;
-            sprintf(tmpstring, "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
-            	curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, curt.tm_hour, curt.tm_min, curt.tm_sec);
-			printstatus(tmpstring, 3);
+            if (debug)
+            {
+                sprintf(tmpstring, 
+                    "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
+                    curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, 
+                    curt.tm_hour, curt.tm_min, curt.tm_sec);
+                printstatus(tmpstring, 3);
+            }
         }
     }
 
