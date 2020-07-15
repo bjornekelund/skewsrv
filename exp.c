@@ -129,7 +129,7 @@ void printstatuscall(char *call1, char *call2, char *call3, char *call4, int lin
                     if (skimmer[skimpos].band[band].active)
                     {
                         printf("\033[%d;%dH", 20 + j, col);
-                        printf("%s:%3s%+6.2fppm(%ld)", skimmer[skimpos].call,
+                        printf("%s:%3s%+6.2fppm(%ld)  ", skimmer[skimpos].call,
                             bandname[band], skimmer[skimpos].band[band].avdev, skimmer[skimpos].band[band].count);
                         j++;
                     }
