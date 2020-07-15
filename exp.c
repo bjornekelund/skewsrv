@@ -415,7 +415,7 @@ int main(int argc, char *argv[])
                                     if (debug)
                                     {
                                         sprintf(tmpstring, "%lld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
-                                            Totalspots, spotsperminute, 100.0 * (double)Qualifiedspots / (double)Totalspots);
+                                            Totalspots, 100.0 * (double)Qualifiedspots / (double)Totalspots, spotsperminute);
                                         printstatus(tmpstring, 2);
 
                                         if (skimpos < 85)
