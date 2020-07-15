@@ -32,13 +32,13 @@
 // 0.5kHz is 18ppm on 10m
 #define MAXERRKHZ 0.5
 // 60ppm is 0.11kHz on 160m
-#define MAXERRPPM 60
+#define MAXERRPPM 60.0
 // Maximum SNR for spot to qualify
 #define MINSNR 6
 // Minimum frequency for spot to qualify
 #define MINFREQ 1800.0
 // Maximum seconds since last spot to be considered active
-#define MAXINACT 300
+#define MAXINACT 15 * 60
 // Time constant in qualified spots of filter for error at 14MHz
 #define TC 50
 // Hour UTC to update list of reference skimmers every day
