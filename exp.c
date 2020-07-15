@@ -414,7 +414,7 @@ int main(int argc, char *argv[])
 
                                     if (debug)
                                     {
-                                        sprintf(tmpstring, "Total spots: %lld with %.1lf spots per minute and %.1lf%% qualified spots", 
+                                        sprintf(tmpstring, "%lld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
                                             Totalspots, spotsperminute, 100.0 * (double)Qualifiedspots / (double)Totalspots);
                                         printstatus(tmpstring, 2);
 
