@@ -581,7 +581,8 @@ int main(int argc, char *argv[])
         
         // If the spots counter reaches maximum, reset counters and clear pipeline
         // but leave skimmer list including averages intact
-        if (Totalspots >= ULONG_MAX - 10000)
+        // LONG_MAX is half of ULONG_MAX so the check is safe
+        if (Totalspots >= LONG_MAX)
         {
             Totalspots = 0;
             Qualifiedspots = 0;
