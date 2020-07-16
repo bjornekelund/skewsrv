@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <math.h>
+#include <limits.h>
 
 #define BUFLEN 256
 #define STRLEN 16
@@ -21,9 +22,6 @@
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
-// Maximum number of analyzed and received spots. Overflow is handled gracefully.
-// Corresponds to approximately 10 years of operation without reboot
-#define MAXSPOTS 4000000000 
 // Maximum number of reference spots. Overflow stops reading list.
 #define MAXREF 50
 // Window of recent spots
@@ -583,7 +581,7 @@ int main(int argc, char *argv[])
         
         // If the spots counter reaches maximum, reset counters and clear pipeline
         // but leave skimmer lis ncluding averages intact
-        if (Totalspots > MAXSPOTS)
+        if (Totalspots >= ULONG_MAX - 10000)
         {
             Totalspots = 0;
             Qualifiedspots = 0;
