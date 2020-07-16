@@ -63,7 +63,7 @@ struct Spot
 struct Bandinfo
 {
     // char name[STRLEN];  // Human friendly name of band
-    long int count;     // Number of analyzed spots for this band
+    unsigned long int count;     // Number of analyzed spots for this band
     bool active;        // Heard from in MAXINACT seconds or less on this band
     // double avadj;       // Average deviation as factor for this band
     double avdev;       // Average deviation in ppm for this band
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
     int c, spp = 0, lastday = 0;
     time_t lasttime = 0, nowtime;
     bool debug = true;
-    long long int lastspotcount = 0;
+    unsigned long int lastspotcount = 0;
     double spotsperminute = 0.0;
 
     void *context = zmq_ctx_new();
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 
             char de[STRLEN], dx[STRLEN], extradata[STRLEN];
             int snr, speed, spot_type, mode, ntp;
-            long long int jstime1, jstime2;
+            unsigned long long int jstime1, jstime2;
             time_t spottime;
             double freq, base_freq;
 
