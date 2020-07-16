@@ -21,6 +21,9 @@
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
+// Maximum number of analyzed and received spots. Overflow is handled gracefully.
+// Corresponds to approximately 10 years of operation without reboot
+#define MAXSPOTS 4000000000 
 // Maximum number of reference spots. Overflow stops reading list.
 #define MAXREF 50
 // Window of recent spots
@@ -91,7 +94,7 @@ static int Referenceskimmers = 0;
 static char referenceskimmer[MAXREF][STRLEN];
 
 // Spot counters. Large enough to last forever.
-static long long int Totalspots = 0, Qualifiedspots = 0;
+static unsigned long int Totalspots = 0, Qualifiedspots = 0;
 
 // Human friendly names of bands
 const char *bandname[] = BANDNAMES;
@@ -414,7 +417,7 @@ int main(int argc, char *argv[])
 
                                     if (debug)
                                     {
-                                        sprintf(tmpstring, "%lld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
+                                        sprintf(tmpstring, "%ld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
                                             Totalspots, 100.0 * (double)Qualifiedspots / (double)Totalspots, spotsperminute);
                                         printstatus(tmpstring, 2);
 
@@ -551,6 +554,17 @@ int main(int argc, char *argv[])
                     curt.tm_hour, curt.tm_min, curt.tm_sec);
                 printstatus(tmpstring, 3);
             }
+        }
+        
+        // If the spots counter reaches maximum, reset counters and clear pipeline
+        // but leave skimmer lis ncluding averages intact
+        if (Totalspots > MAXSPOTS)
+        {
+            Totalspots = 0;
+            Qualifiedspots = 0;
+            for (int i = 0; i < SPOTSWINDOW; i++)
+                pipeline[i].analyzed = true;
+            spp = 0;
         }
     }
 
