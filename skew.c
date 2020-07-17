@@ -27,7 +27,7 @@
 // Window of recent spots
 #define SPOTSWINDOW 1000
 // Number of spots between status report to stdout
-#define REPORTPERIOD 1000
+#define REPORTPERIOD 5000
 
 // Maximum time to reference spot for spot to qualify
 #define MAXAPART 60
@@ -291,15 +291,15 @@ int main(int argc, char *argv[])
     {
         int size = zmq_recv(requester, buffer, BUFLEN, 0);
         buffer[size] = 0;
-       
+
         if (strncmp(buffer, "PROD_SPOT", 9) == 0)
         {
-            if (!debug && !connected)
+            if (!connected)
             {
                 printf("Connected to ZMQ queue.\n");
                 connected = true;
             }
-            
+
             size = zmq_recv(requester, buffer, BUFLEN, 0);
             buffer[size] = 0;
 
@@ -382,7 +382,7 @@ int main(int argc, char *argv[])
                                     // First order IIR filtering of deviation
                                     // Time constant inversely proportional to
                                     // frequency normalized at 14MHz
-                                    double factor = sqrt(freq / 14000.0) / (double)TC; 
+                                    double factor = sqrt(freq / 14000.0) / (double)TC;
 
                                     skimmer[skimpos].band[bandindex].avdev =
                                         (1.0 - factor) * skimmer[skimpos].band[bandindex].avdev +
@@ -503,10 +503,14 @@ int main(int argc, char *argv[])
                     printf("Failed parsing of spot!\n");
             }
 
-            if (!debug)
+            if (Totalspots % REPORTPERIOD == 0)
             {
-                if (Totalspots % REPORTPERIOD == 0)
-                {
+	            if (debug)
+				{
+					printf("\033[2J"); // Clear screen
+				}
+				else
+        	    {
                     struct tm curt = *gmtime(&nowtime);
                     int count = 0;
                     for (int i = 0; i < Skimmers; i++)
@@ -561,7 +565,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Read updated list of reference skimmers once per day 
+        // Read updated list of reference skimmers once per day
         struct tm curt = *gmtime(&nowtime);
         if (curt.tm_hour == REFUPDHOUR && curt.tm_min > REFUPDMINUTE && curt.tm_mday != lastday)
         // if (curt.tm_min > 30 && curt.tm_hour != lastday)
@@ -569,16 +573,16 @@ int main(int argc, char *argv[])
             updatereferences();
             lastday = curt.tm_mday;
             // lastday = curt.tm_hour;
-            sprintf(tmpstring, 
+            sprintf(tmpstring,
                 "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
-                curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, 
+                curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday,
                 curt.tm_hour, curt.tm_min, curt.tm_sec);
             if (debug)
                 printstatus(tmpstring, 3);
             else
                 printf("%s\n", tmpstring);
         }
-        
+
         // If the spots counter reaches maximum, reset counters and clear pipeline
         // but leave skimmer list including averages intact
         // LONG_MAX is half of ULONG_MAX so the check is safe
@@ -589,7 +593,7 @@ int main(int argc, char *argv[])
             for (int i = 0; i < SPOTSWINDOW; i++)
                 pipeline[i].analyzed = true;
             spp = 0;
-        }                
+        }
     }
 
     zmq_close(requester);
