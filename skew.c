@@ -263,8 +263,16 @@ int main(int argc, char *argv[])
 
     void *context = zmq_ctx_new();
     void *requester = zmq_socket(context, ZMQ_SUB);
-    zmq_connect(requester, zmqurl);
+    int rc = zmq_connect(requester, zmqurl);
+   
+    // Subscribe to queue messages
     (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
+    
+    // Set receive time-out to 60 seconds
+    int rcvto = 60 * 1000;
+    (void)zmq_setsockopt(requester, ZMQ_RCVTIMEO, &rcvto, sizeof(rcvto));
+
+    printf("Established context and socket with %s status\n", rc == 0 ? "OK" : "NOT OK");
 
     // Avoid that unitialized entries in pipeline are used
     for (int i = 0; i < SPOTSWINDOW; i++)
@@ -287,12 +295,12 @@ int main(int argc, char *argv[])
         printf("\033c");
     }
 
-    while (true) // Replace with close down signal
+    while (!false) // Replace false with close down signal
     {
         int size = zmq_recv(requester, buffer, BUFLEN, 0);
         buffer[size] = 0;
 
-        if (strncmp(buffer, "PROD_SPOT", 9) == 0)
+        if (size > 9 && strncmp(buffer, "PROD_SPOT", 9) == 0)
         {
             if (!connected)
             {
@@ -304,13 +312,16 @@ int main(int argc, char *argv[])
             buffer[size] = 0;
 
             char de[STRLEN], dx[STRLEN], extradata[STRLEN];
-            int snr, speed, spot_type, mode, ntp;
+            int snr, speed, spot_type, mode, ntp, got;
             unsigned long long int jstime1, jstime2;
             time_t spottime;
             double freq, base_freq;
 
-            int got = sscanf(buffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%lld|%lld|%s",
-                &freq, dx, de, &spot_type, &base_freq, &snr, &speed, &mode, &ntp, &jstime1, &jstime2, extradata);
+            if (size > 0)
+                got = sscanf(buffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%lld|%lld|%s",
+                    &freq, dx, de, &spot_type, &base_freq, &snr, &speed, &mode, &ntp, &jstime1, &jstime2, extradata);
+            else
+                got = 0;
 
             if (got == 12)
             {
@@ -499,8 +510,10 @@ int main(int argc, char *argv[])
             }
             else
             {
-                if (debug)
+                if (debug && size > 0)
                     printf("Failed parsing of spot!\n");
+                else
+                    printf("Receive operation timed out!\n");                    
             }
 
             if (Totalspots % REPORTPERIOD == 0)
