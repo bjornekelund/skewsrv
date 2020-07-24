@@ -1,0 +1,3 @@
+SKEW_TEST
+{"node":callsign, "skew":nn, "160m":nn, "80m":nn, "60m":nn, "40m":nn, 
+"30m":nn, "20m":nn, "17m":nn, "15m":nn, "12m":nn, "10m":nn, "6m":nn, "2m":nn}
