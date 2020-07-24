@@ -1,3 +1,6 @@
 SKEW_TEST
 {"node":callsign, "skew":nn, "160m":nn, "80m":nn, "60m":nn, "40m":nn, 
 "30m":nn, "20m":nn, "17m":nn, "15m":nn, "12m":nn, "10m":nn, "6m":nn, "2m":nn}
+callsign is callsign of skimmer
+skew is weighted average across active bands in ppm with sign when negative and two decimals. Period as decimal separator.
+nn is skew in ppm with sign when negative and two decimals. Period as decimal separator.
