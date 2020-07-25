@@ -639,9 +639,11 @@ int main(int argc, char *argv[])
             snprintf(pbuffer, BUFLEN, "{\"ref_count\":%d,\"ref_call\":[", Referenceskimmers);
             int bp = strlen(pbuffer);
         
+            bool first = true;
             for (int ri = 0; ri < Referenceskimmers; ri++)
             {
-                snprintf(tmpstring, BUFLEN, ",\"%s\"", referenceskimmer[ri]);
+                snprintf(tmpstring, BUFLEN, "%s\"%s\"", first ? "" : ",", referenceskimmer[ri]);
+                first = false;
                 strcpy(&pbuffer[bp], tmpstring);
                 bp += strlen(tmpstring);
             }
