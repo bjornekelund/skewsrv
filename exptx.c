@@ -17,9 +17,9 @@ int main(int argc, char *argv[])
 {
     char pbuffer[BUFLEN];
 
-    void *context = zmq_ctx_new ();
-    void *publisher = zmq_socket (context, ZMQ_PUB);
-    int rc = zmq_bind (publisher, ZMQTALKURL);
+    void *context = zmq_ctx_new();
+    void *publisher = zmq_socket(context, ZMQ_PUB);
+    int rc = zmq_bind(publisher, ZMQTALKURL);
 
     printf("Established talk context and socket with %s status\n", rc == 0 ? "OK" : "NOT OK");
 

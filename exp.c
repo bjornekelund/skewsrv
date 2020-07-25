@@ -18,9 +18,9 @@
 #define DX 2
 #define REFFILENAME "reference"
 #define USAGE "Usage: %s [-d]\n"
-#define ZMQLISTENURL "tcp://138.201.156.239:5566"
-//#define ZMQTALKURL "tcp://138.201.156.239:5567"
-#define ZMQTALKURL "tcp://127.0.0.1:80"
+#define ZMQSUBURL "tcp://138.201.156.239:5566"
+//#define ZMQPUBURL "tcp://138.201.156.239:5567"
+#define ZMQPUBURL "tcp://127.0.0.1:5555"
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
@@ -239,8 +239,8 @@ int main(int argc, char *argv[])
     bool debug = false, connected = false;
     unsigned long int lastspotcount = 0;
     double spotsperminute = 0.0;
-    char zmqlistenurl[BUFLEN] = ZMQLISTENURL;
-    char zmqtalkurl[BUFLEN] = ZMQTALKURL;
+    char zmqsuburl[BUFLEN] = ZMQSUBURL;
+    char zmqpuburl[BUFLEN] = ZMQPUBURL;
     int64_t more = 0;
     size_t more_size = sizeof(more);
 
@@ -253,10 +253,10 @@ int main(int argc, char *argv[])
                 debug = true;
                 break;
             case 'u':
-                strcpy(zmqlistenurl, optarg);
+                strcpy(zmqsuburl, optarg);
                 break;
             case '6':
-                strcpy(zmqtalkurl, optarg);
+                strcpy(zmqpuburl, optarg);
                 break;
             case '?':
                 fprintf(stderr, USAGE, argv[0]);
@@ -276,7 +276,7 @@ int main(int argc, char *argv[])
 
     void *lcontext = zmq_ctx_new();
     void *subscriber = zmq_socket(lcontext, ZMQ_SUB);
-    int lrc = zmq_connect(subscriber, zmqlistenurl);
+    int lrc = zmq_connect(subscriber, zmqsuburl);
    
     // Subscribe to queue messages
     (void)zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "PROD_SPOT", 9);
@@ -287,7 +287,7 @@ int main(int argc, char *argv[])
 
     void *tcontext = zmq_ctx_new();
     void *publisher = zmq_socket(tcontext, ZMQ_PUB);
-    int trc = zmq_connect(publisher, zmqtalkurl);
+    int trc = zmq_bind(publisher, zmqpuburl);
 
     printf("Established listen context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
     printf("Established talk context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
