@@ -14,7 +14,7 @@
 // int main(void) {
     // void *context = zmq_init(1);
     // void *socket = zmq_socket(context, ZMQ_SUB);
-    // zmq_connect(socket, "tcp://138.201.156.239:5566");
+    // zmq_connect(socket, "tcp://138.201.156.239:5567");
     // zmq_setsockopt(socket, ZMQ_SUBSCRIBE, "", 0);
     // int status;
 
@@ -39,7 +39,8 @@ int main (void)
     printf ("Connecting to server...\n");
     void *context = zmq_ctx_new ();
     void *requester = zmq_socket (context, ZMQ_SUB);
-    zmq_connect (requester, "tcp://138.201.156.239:5565");
+//    zmq_connect (requester, "tcp://138.201.156.239:5565");
+    zmq_connect (requester, "tcp://138.201.156.239:5567");
     (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
     char buffer[BUFLEN], string[BUFLEN];
     int size;
@@ -54,7 +55,7 @@ int main (void)
             // size = zmq_recv (requester, buffer, BUFLEN, 0);
             // memcpy(string, buffer, size);
             // string[size] = 0;
-            printf("SPOT: %s\n", string);
+            printf("Msg: %s\n", string);
         // }
     }
     zmq_close (requester);

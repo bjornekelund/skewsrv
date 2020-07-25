@@ -232,7 +232,7 @@ void updatereferences()
 
 int main(int argc, char *argv[])
 {
-    char lbuffer[BUFLEN], tbuffer[BUFLEN], tmpstring[BUFLEN];
+    char lbuffer[BUFLEN], tbuffer[BUFLEN], tmpstring[BUFLEN], avdevs[STRLEN];
     int c, spp = 0, lastday = 0;
     time_t lastcheck, lastupdate, nowtime;
     bool debug = false, connected = false;
@@ -605,19 +605,16 @@ int main(int argc, char *argv[])
                     printf("%s\n", tbuffer);
                     zmq_send(trequester, tbuffer, strlen(tbuffer), 0);
                     
-                    snprintf(tbuffer, BUFLEN, "{\"node\":\"%s\",\"skew\":\"%.2f\"", 
-                        skimmer[si].call, skimmer[si].avdev);
+                    snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
+                    snprintf(tbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"", 
+                        skimmer[si].call, (unsigned long long)nowtime * 1000, 
+                        skimmer[si].active ? avdevs : "inact");
                     int bp = strlen(tbuffer);    
                     for (int bi = 0; bi < BANDS; bi++)
                     {
-                        if (skimmer[si].band[bi].active)
-                        {
-                            snprintf(tmpstring, BUFLEN, ",\"%s\":\"%.2f\"", bandname[bi], skimmer[si].band[bi].avdev);
-                        }
-                        else
-                        {
-                            snprintf(tmpstring, BUFLEN, ",\"%s\":\"inact\"", bandname[bi]);
-                        }
+                        snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
+                        snprintf(tmpstring, BUFLEN, ",\"%s\":\"%s\"", bandname[bi], 
+                            skimmer[si].band[bi].active ? avdevs : "inact");
                         strcpy(&tbuffer[bp], tmpstring);
                         bp += strlen(tmpstring);
                     }
