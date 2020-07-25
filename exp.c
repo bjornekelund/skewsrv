@@ -277,10 +277,10 @@ int main(int argc, char *argv[])
     void *lcontext = zmq_ctx_new();
     void *subscriber = zmq_socket(lcontext, ZMQ_SUB);
     int lrc = zmq_connect(subscriber, zmqsuburl);
-
+   
     // Subscribe to queue messages
     (void)zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "PROD_SPOT", 9);
-
+    
     // Set receive time-out to 60 seconds
     int rcvto = 60 * 1000;
     (void)zmq_setsockopt(subscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(rcvto));
@@ -534,7 +534,7 @@ int main(int argc, char *argv[])
                 if (debug && size > 0)
                     printf("Failed parsing of spot!\n");
                 else
-                    printf("Receive operation timed out!\n");
+                    printf("Receive operation timed out!\n");                    
             }
 
             if (Totalspots % SPOTSREPORT == 0)
@@ -600,10 +600,10 @@ int main(int argc, char *argv[])
         }
 
         time(&nowtime);
-        if (difftime(nowtime, lastupdate) > UPDATEPERIOD)
+        if (difftime(nowtime, lastupdate) > UPDATEPERIOD) 
         {
             lastupdate = nowtime;
-
+            
             for (int si = 0; si < Skimmers; si++)
             {
                 if (skimmer[si].active)
@@ -611,16 +611,16 @@ int main(int argc, char *argv[])
                     strcpy(pbuffer, "SKEW_TEST_SKEW");
                     printf("%s ", pbuffer);
                     zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
-
+                    
                     snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
-                    snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"",
-                        skimmer[si].call, (unsigned long long)nowtime * 1000,
+                    snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"", 
+                        skimmer[si].call, (unsigned long long)nowtime * 1000, 
                         skimmer[si].active ? avdevs : "inact");
-                    int bp = strlen(pbuffer);
+                    int bp = strlen(pbuffer);    
                     for (int bi = 0; bi < BANDS; bi++)
                     {
                         snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
-                        snprintf(tmpstring, BUFLEN, ",\"%s\":\"%s\"", bandname[bi],
+                        snprintf(tmpstring, BUFLEN, ",\"%s\":\"%s\"", bandname[bi], 
                             skimmer[si].band[bi].active ? avdevs : "inact");
                         strcpy(&pbuffer[bp], tmpstring);
                         bp += strlen(tmpstring);
@@ -650,8 +650,6 @@ int main(int argc, char *argv[])
             pbuffer[bp] = 0;
             zmq_send(publisher, pbuffer, strlen(pbuffer), 0);
             printf("%s\n", pbuffer);
-                }
-            }
         }
 
         // Read updated list of reference skimmers once per day

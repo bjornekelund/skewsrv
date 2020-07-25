@@ -1,11 +1,14 @@
-SKEW_TEST
-{"node":callsign, "time":ddd, "skew":nn, "160m":nn, "80m":nn, "60m":nn, "40m":nn, 
-"30m":nn, "20m":nn, "17m":nn, "15m":nn, "12m":nn, "10m":nn, "6m":nn, "2m":nn}
+SKEW_TEST_SKEW {"node":callsign, "time":ddd, "skew":nn, "160m":nn, "80m":nn, "60m":nn, "40m":nn, "30m":nn, "20m":nn, "17m":nn, "15m":nn, "12m":nn, "10m":nn, "6m":nn, "2m":nn}
 
 callsign is callsign of skimmer
 
 ddd is time in ms based epoch (1000x Unix epoch)
 
-skew is weighted average across active bands in ppm with sign when negative and two decimals. Period as decimal separator.
+nn is either a weighted skew in ppm across active bands or for a particular band. Number with sign when negative and two decimals. 
+Period as decimal separator. "inact" if no spots within the last 15 minutes.  
 
-nn is skew in ppm with sign when negative and two decimals. Period as decimal separator.
+SKEW_TEST_REF {"ref_count":dd,"ref_call":["call1","call2",...]}
+
+dd is number of active reference skimmers. 
+
+call# is callsign of reference skimmmers.
