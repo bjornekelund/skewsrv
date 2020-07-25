@@ -10,18 +10,18 @@
 #define BUFLEN 256
 #define STRLEN 16
 //#define ZMQTALKURL "tcp://138.201.156.239:5567"
-#define ZMQTALKURL "tcp://localhost:80"
+#define ZMQTALKURL "tcp://*:5555"
 
 
 int main(int argc, char *argv[])
 {
     char pbuffer[BUFLEN];
 
-    void *context = zmq_ctx_new();
-    void *publisher = zmq_socket(context, ZMQ_PUB);
-    int trc = zmq_connect(publisher, ZMQTALKURL);
+    void *context = zmq_ctx_new ();
+    void *publisher = zmq_socket (context, ZMQ_PUB);
+    int rc = zmq_bind (publisher, ZMQTALKURL);
 
-    printf("Established talk context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
+    printf("Established talk context and socket with %s status\n", rc == 0 ? "OK" : "NOT OK");
 
     while (!false) // Replace false with close down signal
     {
