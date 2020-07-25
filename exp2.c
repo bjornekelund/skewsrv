@@ -1,14 +1,13 @@
 //  Hello World client
-// #include <zmq.h>
-// #include <string.h>
 // #include <stdio.h>
 // #include <unistd.h>
-
 #include "zmq.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
+
 #define BUFLEN 8192
 
 // int main(void) {
@@ -36,29 +35,49 @@
 // }
 int main (void)
 {
+    char buffer[BUFLEN];
+    // char string[BUFLEN];
+    int size1;
+    // int size2;
+    // int64_t more = 0;
+    // size_t more_size = sizeof(more);
+
     printf ("Connecting to server...\n");
     void *context = zmq_ctx_new ();
-    void *requester = zmq_socket (context, ZMQ_SUB);
-//    zmq_connect (requester, "tcp://138.201.156.239:5565");
-    zmq_connect (requester, "tcp://138.201.156.239:5567");
-    (void)zmq_setsockopt(requester, ZMQ_SUBSCRIBE, "", 0);
-    char buffer[BUFLEN], string[BUFLEN];
-    int size;
+    void *subscriber = zmq_socket (context, ZMQ_SUB);
+    // int rc = zmq_connect (subscriber, "tcp://138.201.156.239:5566");
+
+    int rc = zmq_connect (subscriber, "tcp://localhost:80");
+    // (void)zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "PROD_SPOT", 9);
+    assert(rc == 0);
+    
+    rc = zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "", 0);
+    assert(rc == 0);
 
     while (true)
     {
-        size = zmq_recv (requester, buffer, BUFLEN, 0);
-        memcpy(string, buffer, size);
-        string[size] = 0;
+        size1 = zmq_recv (subscriber, buffer, BUFLEN, 0);
+        buffer[size1] = 0;
+        printf("%s\n", buffer);
+        // memcpy(string, buffer, size1);
+
+        // zmq_getsockopt(subscriber, ZMQ_RCVMORE, &more, &more_size);
+
+        // if (more != 0)
+        // {
+            // size2 = zmq_recv(subscriber, buffer, BUFLEN, 0);
+            // memcpy(string, buffer, size2);
+        // }
+        // string[size2] = 0;
         // if (strncmp(buffer, "PROD_SPOT_", 10) == 0) 
         // {
-            // size = zmq_recv (requester, buffer, BUFLEN, 0);
+            // size = zmq_recv (subscriber, buffer, BUFLEN, 0);
             // memcpy(string, buffer, size);
             // string[size] = 0;
-            printf("Msg: %s\n", string);
+        // printf("Msg: %s\n", string);
         // }
     }
-    zmq_close (requester);
+    zmq_close (subscriber);
     zmq_ctx_destroy (context);
 
     return 0;

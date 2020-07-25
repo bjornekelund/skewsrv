@@ -19,7 +19,8 @@
 #define REFFILENAME "reference"
 #define USAGE "Usage: %s [-d]\n"
 #define ZMQLISTENURL "tcp://138.201.156.239:5566"
-#define ZMQTALKURL "tcp://138.201.156.239:5567"
+//#define ZMQTALKURL "tcp://138.201.156.239:5567"
+#define ZMQTALKURL "tcp://127.0.0.1:80"
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
@@ -52,7 +53,7 @@
 // Number of seconds between checks for inactive skimmers
 #define CHECKPERIOD 15
 // Number of seconds between database updates
-#define UPDATEPERIOD 30
+#define UPDATEPERIOD 10
 
 struct Spot 
 {
@@ -232,7 +233,7 @@ void updatereferences()
 
 int main(int argc, char *argv[])
 {
-    char lbuffer[BUFLEN], tbuffer[BUFLEN], tmpstring[BUFLEN], avdevs[STRLEN];
+    char sbuffer[BUFLEN], pbuffer[BUFLEN], tmpstring[BUFLEN], avdevs[STRLEN];
     int c, spp = 0, lastday = 0;
     time_t lastcheck, lastupdate, nowtime;
     bool debug = false, connected = false;
@@ -240,6 +241,9 @@ int main(int argc, char *argv[])
     double spotsperminute = 0.0;
     char zmqlistenurl[BUFLEN] = ZMQLISTENURL;
     char zmqtalkurl[BUFLEN] = ZMQTALKURL;
+    int64_t more = 0;
+    size_t more_size = sizeof(more);
+
 
     while ((c = getopt(argc, argv, "du:t:")) != -1)
     {
@@ -271,19 +275,19 @@ int main(int argc, char *argv[])
     printf("Connecting to ZMQ listen queue...\n");
 
     void *lcontext = zmq_ctx_new();
-    void *lrequester = zmq_socket(lcontext, ZMQ_SUB);
-    int lrc = zmq_connect(lrequester, zmqlistenurl);
+    void *subscriber = zmq_socket(lcontext, ZMQ_SUB);
+    int lrc = zmq_connect(subscriber, zmqlistenurl);
    
     // Subscribe to queue messages
-    (void)zmq_setsockopt(lrequester, ZMQ_SUBSCRIBE, "", 0);
+    (void)zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "PROD_SPOT", 9);
     
     // Set receive time-out to 60 seconds
     int rcvto = 60 * 1000;
-    (void)zmq_setsockopt(lrequester, ZMQ_RCVTIMEO, &rcvto, sizeof(rcvto));
+    (void)zmq_setsockopt(subscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(rcvto));
 
     void *tcontext = zmq_ctx_new();
-    void *trequester = zmq_socket(tcontext, ZMQ_SUB);
-    int trc = zmq_connect(trequester, zmqtalkurl);
+    void *publisher = zmq_socket(tcontext, ZMQ_PUB);
+    int trc = zmq_connect(publisher, zmqtalkurl);
 
     printf("Established listen context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
     printf("Established talk context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
@@ -311,10 +315,12 @@ int main(int argc, char *argv[])
 
     while (!false) // Replace false with close down signal
     {
-        int size = zmq_recv(lrequester, lbuffer, BUFLEN, 0);
-        lbuffer[size] = 0;
+        int size = zmq_recv(subscriber, sbuffer, BUFLEN, 0);
+        sbuffer[size] = 0;
+        
+        zmq_getsockopt(subscriber, ZMQ_RCVMORE, &more, &more_size);        
 
-        if (size > 9 && strncmp(lbuffer, "PROD_SPOT", 9) == 0)
+        if (more != 0)
         {
             if (!connected)
             {
@@ -322,8 +328,9 @@ int main(int argc, char *argv[])
                 connected = true;
             }
 
-            size = zmq_recv(lrequester, lbuffer, BUFLEN, 0);
-            lbuffer[size] = 0;
+            size = zmq_recv(subscriber, sbuffer, BUFLEN, 0);
+            sbuffer[size] = 0;
+            // fprintf(stderr, "%s\n", sbuffer);
 
             char de[STRLEN], dx[STRLEN], extradata[STRLEN];
             int snr, speed, spot_type, mode, ntp, got;
@@ -332,7 +339,7 @@ int main(int argc, char *argv[])
             double freq, base_freq;
 
             if (size > 0)
-                got = sscanf(lbuffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%lld|%lld|%s",
+                got = sscanf(sbuffer, "%lf|%[^|]|%[^|]|%d|%lf|%d|%d|%d|%d|%lld|%lld|%s",
                     &freq, dx, de, &spot_type, &base_freq, &snr, &speed, &mode, &ntp, &jstime1, &jstime2, extradata);
             else
                 got = 0;
@@ -601,27 +608,27 @@ int main(int argc, char *argv[])
             {
                 if (skimmer[si].active)
                 {
-                    strcpy(tbuffer, "SKEW_TEST");
-                    printf("%s\n", tbuffer);
-                    zmq_send(trequester, tbuffer, strlen(tbuffer), 0);
+                    strcpy(pbuffer, "SKEW_TEST");
+                    printf("%s ", pbuffer);
+                    zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
                     
                     snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
-                    snprintf(tbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"", 
+                    snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"", 
                         skimmer[si].call, (unsigned long long)nowtime * 1000, 
                         skimmer[si].active ? avdevs : "inact");
-                    int bp = strlen(tbuffer);    
+                    int bp = strlen(pbuffer);    
                     for (int bi = 0; bi < BANDS; bi++)
                     {
                         snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
                         snprintf(tmpstring, BUFLEN, ",\"%s\":\"%s\"", bandname[bi], 
                             skimmer[si].band[bi].active ? avdevs : "inact");
-                        strcpy(&tbuffer[bp], tmpstring);
+                        strcpy(&pbuffer[bp], tmpstring);
                         bp += strlen(tmpstring);
                     }
-                    tbuffer[bp++] = '}';
-                    tbuffer[bp] = 0;
-                    zmq_send(trequester, tbuffer, strlen(tbuffer), 0);
-                    printf("%s\n", tbuffer);
+                    pbuffer[bp++] = '}';
+                    pbuffer[bp] = 0;
+                    zmq_send(publisher, pbuffer, strlen(pbuffer), 0);
+                    printf("%s\n", pbuffer);
                 }                            
             }            
         }
@@ -657,7 +664,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    zmq_close(lrequester);
+    zmq_close(subscriber);
     zmq_ctx_destroy(lcontext);
 
     return 0;
