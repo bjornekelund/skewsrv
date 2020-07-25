@@ -608,7 +608,7 @@ int main(int argc, char *argv[])
             {
                 if (skimmer[si].active)
                 {
-                    strcpy(pbuffer, "SKEW_TEST");
+                    strcpy(pbuffer, "SKEW_TEST_SKEW");
                     printf("%s ", pbuffer);
                     zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
                     
@@ -631,6 +631,25 @@ int main(int argc, char *argv[])
                     printf("%s\n", pbuffer);
                 }                            
             }            
+
+            strcpy(pbuffer, "SKEW_TEST_REF");
+            printf("%s ", pbuffer);
+            zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
+
+            snprintf(pbuffer, BUFLEN, "{\"ref_count\":%d,\"ref_call\":[", Referenceskimmers);
+            int bp = strlen(pbuffer);
+        
+            for (int ri = 0; ri < Referenceskimmers; ri++)
+            {
+                snprintf(tmpstring, BUFLEN, ",\"%s\"", referenceskimmer[ri]);
+                strcpy(&pbuffer[bp], tmpstring);
+                bp += strlen(tmpstring);
+            }
+            pbuffer[bp++] = ']';
+            pbuffer[bp++] = '}';
+            pbuffer[bp] = 0;
+            zmq_send(publisher, pbuffer, strlen(pbuffer), 0);
+            printf("%s\n", pbuffer);
         }
 
         // Read updated list of reference skimmers once per day
