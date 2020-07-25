@@ -20,7 +20,7 @@
 #define USAGE "Usage: %s [-d]\n"
 #define ZMQSUBURL "tcp://138.201.156.239:5566"
 //#define ZMQPUBURL "tcp://138.201.156.239:5567"
-#define ZMQPUBURL "tcp://127.0.0.1:5555"
+#define ZMQPUBURL "tcp://*:5567"
 
 // Maximum number of skimmers. Overflow is handled gracefully.
 #define MAXSKIMMERS 500
