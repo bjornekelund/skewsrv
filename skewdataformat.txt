@@ -4,8 +4,9 @@ callsign is callsign of skimmer
 
 ddd is time in ms based epoch (1000x Unix epoch)
 
-nn is either a weighted skew in ppm across active bands or for a particular band. Number with sign when negative and two decimals. 
-Period as decimal separator. "inact" if no spots within the last 15 minutes.  
+nn is either a weighted skew in ppm across active bands or for a particular band. 
+Number has sign two decimals. Period as decimal separator. 
+"inact" if no spots within the last 15 minutes.  
 
 SKEW_TEST_REF {"ref_count":dd,"ref_call":["call1","call2",...]}
 
