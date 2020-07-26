@@ -52,8 +52,10 @@
 #define REFUPDMINUTE 30
 // Number of seconds between checks for inactive skimmers
 #define CHECKPERIOD 15
-// Number of seconds between database updates
-#define UPDATEPERIOD 10
+// Number of seconds between skew database updates
+#define SKEWUPDATEPERIOD 7
+// Number of seconds between reference skimmer database updates
+#define REFUPDATEPERIOD 11
 
 struct Spot 
 {
@@ -235,7 +237,7 @@ int main(int argc, char *argv[])
 {
     char sbuffer[BUFLEN], pbuffer[BUFLEN], tmpstring[BUFLEN], avdevs[STRLEN];
     int c, spp = 0, lastday = 0;
-    time_t lastcheck, lastupdate, nowtime;
+    time_t lastinactcheck, lastskewupdate, lastrefupdate, nowtime;
     bool debug = false, connected = false;
     unsigned long int lastspotcount = 0;
     double spotsperminute = 0.0;
@@ -269,9 +271,10 @@ int main(int argc, char *argv[])
     updatereferences();
 
     time(&nowtime);
-	lastcheck = nowtime;
-    lastupdate = nowtime;
-
+	lastinactcheck = nowtime;
+    lastskewupdate = nowtime;
+    lastrefupdate = nowtime;
+    
     printf("Connecting to ZMQ listen queue...\n");
 
     void *lcontext = zmq_ctx_new();
@@ -289,8 +292,8 @@ int main(int argc, char *argv[])
     void *publisher = zmq_socket(tcontext, ZMQ_PUB);
     int trc = zmq_bind(publisher, zmqpuburl);
 
-    printf("Established listen context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
-    printf("Established talk context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
+    printf("Established subscriber context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
+    printf("Established publisher context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
 
     // Avoid that unitialized entries in pipeline are used
     for (int i = 0; i < SPOTSWINDOW; i++)
@@ -558,10 +561,11 @@ int main(int argc, char *argv[])
 
         // Check for inactive skimmers every CHECKPERIOD seconds
         time(&nowtime);
-        double elapsed = difftime(nowtime, lastcheck);
+
+        double elapsed = difftime(nowtime, lastinactcheck);
         if (elapsed > CHECKPERIOD) 
         {
-            lastcheck = nowtime;
+            lastinactcheck = nowtime;
 
             // Estimate spots per minute. Filter with tc=20 15 second periods.
             int periodcount = Totalspots - lastspotcount;
@@ -599,10 +603,11 @@ int main(int argc, char *argv[])
             }
         }
 
-        time(&nowtime);
-        if (difftime(nowtime, lastupdate) > UPDATEPERIOD) 
+        // Update database with current skews every SKEWUPDATEPERIOD seconds
+
+        if (difftime(nowtime, lastskewupdate) > SKEWUPDATEPERIOD) 
         {
-            lastupdate = nowtime;
+            lastskewupdate = nowtime;
 
             for (int si = 0; si < Skimmers; si++)
             {
@@ -631,7 +636,11 @@ int main(int argc, char *argv[])
                     printf("%s\n", pbuffer);
                 }
             }
+        }
 
+        if (difftime(nowtime, lastrefupdate) > REFUPDATEPERIOD) 
+        {
+            lastrefupdate = nowtime;
             strcpy(pbuffer, "SKEW_TEST_REF");
             printf("%s ", pbuffer);
             zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
