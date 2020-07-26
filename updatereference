@@ -22,7 +22,7 @@ echo "Job started "`date -u "+%F %T" `
 START=$SECONDS
 
 # Uncomment to execute always
-echo "Never" > $TOKEN
+#echo "Never" > $TOKEN
 
 # Check if we already did the work for
 # today, if so, exit
