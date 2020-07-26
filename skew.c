@@ -275,7 +275,7 @@ int main(int argc, char *argv[])
     lastskewupdate = nowtime;
     lastrefupdate = nowtime;
     
-    printf("Connecting to ZMQ listen queue...\n");
+    printf("Connecting to ZMQ queue...\n");
 
     void *lcontext = zmq_ctx_new();
     void *subscriber = zmq_socket(lcontext, ZMQ_SUB);
