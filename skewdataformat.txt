@@ -1,6 +1,6 @@
 SKEW_TEST_SKEW {"node":callsign, "time":eee, "timeout":ttt, "spots":sss, "period":ppp, 
-"skew":www, "160m":nnn, "80m":nnn, "60m":nnn, "40m":nnn, "30m":nnn, "20m":nnn, "17m":nnn, 
-"15m":nnn, "12m":nnn, "10m":nnn, "6m":nnn, "2m":nnn}
+"skew":www, skew_per_band:{"160m":nnn, "80m":nnn, "60m":nnn, "40m":nnn, "30m":nnn, "20m":nnn, "17m":nnn, 
+"15m":nnn, "12m":nnn, "10m":nnn, "6m":nnn, "2m":nnn}}
 
 callsign is callsign of skimmer
 

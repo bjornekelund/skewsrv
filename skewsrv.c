@@ -624,18 +624,21 @@ int main(int argc, char *argv[])
                 }
                 snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
                 snprintf(pbuffer, BUFLEN, 
-                    "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s", 
+                    "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s,\"skew_per_band\":{", 
                     skimmer[si].call, nowtime, MAXINACT, spots, elapsed, skimmer[si].active ? avdevs : "null");
                 int bp = strlen(pbuffer);
+                bool first = true;
                 for (int bi = 0; bi < BANDS; bi++)
                 {
                     snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
-                    snprintf(tmpstring, BUFLEN, ",\"%s\":%s", bandname[bi], 
-                        skimmer[si].band[bi].active ? avdevs : "null");
+                    snprintf(tmpstring, BUFLEN, "%s\"%s\":%s", first ? "" : ",",
+                        bandname[bi], skimmer[si].band[bi].active ? avdevs : "null");
                     strcpy(&pbuffer[bp], tmpstring);
                     bp += strlen(tmpstring);
+                    first = false;
                 }
-                pbuffer[bp++] = '}';
+                    pbuffer[bp++] = '}';
+                    pbuffer[bp++] = '}';
                 pbuffer[bp] = '\0';
                 zmq_send(publisher, pbuffer, bp, 0);
                 printf("%s\n", pbuffer);
