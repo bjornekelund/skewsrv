@@ -1,14 +1,29 @@
-SKEW_TEST_SKEW {"node":callsign, "time":ddd, "skew":nn, "160m":nn, "80m":nn, "60m":nn, "40m":nn, "30m":nn, "20m":nn, "17m":nn, "15m":nn, "12m":nn, "10m":nn, "6m":nn, "2m":nn}
+SKEW_TEST_SKEW {"node":callsign, "time":eee, "timeout":ttt, "spots":sss, "period":ppp, 
+"skew":www, "160m":nnn, "80m":nnn, "60m":nnn, "40m":nnn, "30m":nnn, "20m":nnn, "17m":nnn, 
+"15m":nnn, "12m":nnn, "10m":nnn, "6m":nnn, "2m":nnn}
 
 callsign is callsign of skimmer
 
-ddd is time in ms based epoch (1000x Unix epoch)
+ttt is the time out in seconds for when considering a skimmer 
+(or a band for a skimmer) inactive.
 
-nn is either a weighted skew in ppm across active bands or for a particular band. 
-Number has sign two decimals. Period as decimal separator. 
-"inact" if no spots within the last 15 minutes.  
+sss is the number of spots since the last update
 
-SKEW_TEST_REF {"ref_count":dd,"ref_call":["call1","call2",...]}
+ppp is the number of seconds since the last update
+
+eee is time of the update in second epoch.
+
+www is a weighted skew in ppm across active bands. 
+Number has two decimals and sign when negative. Period as decimal separator. 
+null if no spots on any band within the last ttt seconds. 
+
+nnn is the skew for a particular band. 
+Number has two decimals and sign when negative. Period as decimal separator. 
+null if no spots on band in question within the last ttt seconds. 
+
+SKEW_TEST_REF {"time":eee, "ref_count":dd,"ref_call":["call1","call2",...]}
+
+eee is time of the update in second epoch.
 
 dd is number of active reference skimmers. 
 

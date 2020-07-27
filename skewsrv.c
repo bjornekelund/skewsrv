@@ -53,9 +53,9 @@
 // Number of seconds between checks for inactive skimmers
 #define CHECKPERIOD 15
 // Number of seconds between skew database updates
-#define SKEWUPDATEPERIOD 7
+#define SKEWUPDATEPERIOD 59
 // Number of seconds between reference skimmer database updates
-#define REFUPDATEPERIOD 11
+#define REFUPDATEPERIOD 97
 
 struct Spot 
 {
@@ -70,10 +70,9 @@ struct Spot
 
 struct Bandinfo
 {
-    // char name[STRLEN];  // Human friendly name of band
-    unsigned long int count;     // Number of analyzed spots for this band
+    unsigned long int count; // Number of analyzed spots for this band
+    unsigned long int lastcount; // Number of analyzed spots for this band at last database update
     bool active;        // Heard from in MAXINACT seconds or less on this band
-    // double avadj;       // Average deviation as factor for this band
     double avdev;       // Average deviation in ppm for this band
     double absavdev;    // Absolute average deviation in ppm for this band
     time_t last;        // Time of most recent qualified spot for this band in epoch
@@ -307,6 +306,7 @@ int main(int argc, char *argv[])
         {
             skimmer[i].band[j].active = false;
             skimmer[i].band[j].last = nowtime;
+            skimmer[i].band[j].lastcount = 0;
         }
     }
 
@@ -603,49 +603,57 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Update database with current skews every SKEWUPDATEPERIOD seconds
+        // Publish skimmer skew database updates SKEWUPDATEPERIOD seconds
 
-        if (difftime(nowtime, lastskewupdate) > SKEWUPDATEPERIOD) 
+        elapsed = difftime(nowtime, lastskewupdate);
+        if (elapsed > SKEWUPDATEPERIOD) 
         {
             lastskewupdate = nowtime;
 
             for (int si = 0; si < Skimmers; si++)
             {
-                if (skimmer[si].active)
-                {
-                    strcpy(pbuffer, "SKEW_TEST_SKEW");
-                    printf("%s ", pbuffer);
-                    zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
+                int spots = 0;
+                strcpy(pbuffer, "SKEW_TEST_SKEW");
+                printf("%s ", pbuffer);
+                zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
-                    snprintf(avdevs, STRLEN, "%+.2f", skimmer[si].avdev);
-                    snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%lld,\"skew\":\"%s\"", 
-                        skimmer[si].call, (unsigned long long)nowtime * 1000, 
-                        skimmer[si].active ? avdevs : "inact");
-                    int bp = strlen(pbuffer);
-                    for (int bi = 0; bi < BANDS; bi++)
-                    {
-                        snprintf(avdevs, STRLEN, "%+.2f", skimmer[si].band[bi].avdev);
-                        snprintf(tmpstring, BUFLEN, ",\"%s\":\"%s\"", bandname[bi], 
-                            skimmer[si].band[bi].active ? avdevs : "inact");
-                        strcpy(&pbuffer[bp], tmpstring);
-                        bp += strlen(tmpstring);
-                    }
-                    pbuffer[bp++] = '}';
-                    pbuffer[bp] = 0;
-                    zmq_send(publisher, pbuffer, strlen(pbuffer), 0);
-                    printf("%s\n", pbuffer);
+                for (int bi = 0; bi < BANDS; bi++)
+                {
+                    spots += skimmer[si].band[bi].count - skimmer[si].band[bi].lastcount;
+                    skimmer[si].band[bi].lastcount = skimmer[si].band[bi].count;
                 }
+                snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
+                snprintf(pbuffer, BUFLEN, 
+                    "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s", 
+                    skimmer[si].call, nowtime, MAXINACT, spots, elapsed, skimmer[si].active ? avdevs : "null");
+                int bp = strlen(pbuffer);
+                for (int bi = 0; bi < BANDS; bi++)
+                {
+                    snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
+                    snprintf(tmpstring, BUFLEN, ",\"%s\":%s", bandname[bi], 
+                        skimmer[si].band[bi].active ? avdevs : "null");
+                    strcpy(&pbuffer[bp], tmpstring);
+                    bp += strlen(tmpstring);
+                }
+                pbuffer[bp++] = '}';
+                pbuffer[bp] = '\0';
+                zmq_send(publisher, pbuffer, bp, 0);
+                printf("%s\n", pbuffer);
             }
         }
 
-        if (difftime(nowtime, lastrefupdate) > REFUPDATEPERIOD) 
+        // Publish list of reference skimmers every REFUPDATEPERIOD seconds
+        
+        elapsed = difftime(nowtime, lastrefupdate);
+        if (elapsed > REFUPDATEPERIOD) 
         {
             lastrefupdate = nowtime;
             strcpy(pbuffer, "SKEW_TEST_REF");
             printf("%s ", pbuffer);
             zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
-            snprintf(pbuffer, BUFLEN, "{\"ref_count\":%d,\"ref_call\":[", Referenceskimmers);
+            snprintf(pbuffer, BUFLEN, "{\"time\":%ld,\"ref_count\":%d,\"ref_call\":[", 
+                nowtime, Referenceskimmers);
             int bp = strlen(pbuffer);
 
             bool first = true;
