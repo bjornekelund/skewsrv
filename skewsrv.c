@@ -85,6 +85,7 @@ struct Skimmer
     double avdev;       // Average deviation across active bands, 40m and up
     bool active;        // Heard from in MAXINACT seconds or less
     time_t last;        // Time of most recent qualified spot in epoch
+    bool reported;      // If a change of active state has been reported
     struct Bandinfo band[BANDS];
 };
 
@@ -302,6 +303,7 @@ int main(int argc, char *argv[])
     {
         skimmer[i].active = false;
         skimmer[i].last = nowtime;
+        skimmer[i].reported = false;
         for (int j = 0; j < BANDS; j++)
         {
             skimmer[i].band[j].active = false;
@@ -443,6 +445,7 @@ int main(int argc, char *argv[])
 
                                     skimmer[skimpos].band[bandindex].active = true;
                                     skimmer[skimpos].active = true;
+                                    skimmer[skimpos].reported = false;
 
                                     // Calculate average error across bands.
                                     // Only include 10MHz and below if no higher band have spots
@@ -508,6 +511,7 @@ int main(int argc, char *argv[])
                                     skimmer[Skimmers].reference = pipeline[pi].reference;
                                     skimmer[Skimmers].band[bandindex].active = true;
                                     skimmer[Skimmers].active = true;
+                                    skimmer[Skimmers].reported = false;
 
                                     Skimmers++;
                                     // if (debug)
@@ -599,6 +603,8 @@ int main(int argc, char *argv[])
                         skimmer[si].call, difftime(nowtime, skimmer[si].last));
                     printstatus(tmpstring, 0);
                 }
+                if (!skimactive && skimmer[si].active) // Report on negative transition only
+                    skimmer[si].reported = false;
                 skimmer[si].active = skimactive;
             }
         }
@@ -612,36 +618,40 @@ int main(int argc, char *argv[])
 
             for (int si = 0; si < Skimmers; si++)
             {
-                int spots = 0;
-                strcpy(pbuffer, "SKEW_TEST_SKEW");
-                printf("%s ", pbuffer);
-                zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
+                if (skimmer[si].active || !skimmer[si].reported)
+                {
+                    skimmer[si].reported = true;
+                    int spots = 0;
+                    strcpy(pbuffer, "SKEW_TEST_SKEW");
+                    printf("%s ", pbuffer);
+                    zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
-                for (int bi = 0; bi < BANDS; bi++)
-                {
-                    spots += skimmer[si].band[bi].count - skimmer[si].band[bi].lastcount;
-                    skimmer[si].band[bi].lastcount = skimmer[si].band[bi].count;
+                    for (int bi = 0; bi < BANDS; bi++)
+                    {
+                        spots += skimmer[si].band[bi].count - skimmer[si].band[bi].lastcount;
+                        skimmer[si].band[bi].lastcount = skimmer[si].band[bi].count;
+                    }
+                    snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
+                    snprintf(pbuffer, BUFLEN, 
+                        "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s,\"skew_per_band\":{", 
+                        skimmer[si].call, nowtime, MAXINACT, spots, elapsed, skimmer[si].active ? avdevs : "null");
+                    int bp = strlen(pbuffer);
+                    bool first = true;
+                    for (int bi = 0; bi < BANDS; bi++)
+                    {
+                        snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
+                        snprintf(tmpstring, BUFLEN, "%s\"%s\":%s", first ? "" : ",",
+                            bandname[bi], skimmer[si].band[bi].active ? avdevs : "null");
+                        strcpy(&pbuffer[bp], tmpstring);
+                        bp += strlen(tmpstring);
+                        first = false;
+                    }
+                        pbuffer[bp++] = '}';
+                        pbuffer[bp++] = '}';
+                    pbuffer[bp] = '\0';
+                    zmq_send(publisher, pbuffer, bp, 0);
+                    printf("%s\n", pbuffer);
                 }
-                snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
-                snprintf(pbuffer, BUFLEN, 
-                    "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s,\"skew_per_band\":{", 
-                    skimmer[si].call, nowtime, MAXINACT, spots, elapsed, skimmer[si].active ? avdevs : "null");
-                int bp = strlen(pbuffer);
-                bool first = true;
-                for (int bi = 0; bi < BANDS; bi++)
-                {
-                    snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
-                    snprintf(tmpstring, BUFLEN, "%s\"%s\":%s", first ? "" : ",",
-                        bandname[bi], skimmer[si].band[bi].active ? avdevs : "null");
-                    strcpy(&pbuffer[bp], tmpstring);
-                    bp += strlen(tmpstring);
-                    first = false;
-                }
-                    pbuffer[bp++] = '}';
-                    pbuffer[bp++] = '}';
-                pbuffer[bp] = '\0';
-                zmq_send(publisher, pbuffer, bp, 0);
-                printf("%s\n", pbuffer);
             }
         }
 
