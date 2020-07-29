@@ -21,6 +21,8 @@ nnn is the skew for a particular band.
 Number has two decimals and sign when negative. Period as decimal separator. 
 null if no spots on band in question within the last ttt seconds. 
 
+A skimmer inactive on all bands ("skew":null) is only reported once and will not reported again until active again.
+
 SKEW_TEST_REF {"time":eee, "ref_count":dd,"ref_call":["call1","call2",...]}
 
 eee is time of the update in second epoch.
