@@ -48,7 +48,7 @@ int main (void)
     // int rc = zmq_connect (subscriber, "tcp://138.201.156.239:5566");
 
     // int rc = zmq_connect (subscriber, "tcp://localhost:5567");
-    int rc = zmq_connect (subscriber, "tcp://radio.sm7iun.se:5567");
+    int rc = zmq_connect (subscriber, "tcp://radio.sm7iun.se:5568");
     // (void)zmq_setsockopt(subscriber, ZMQ_SUBSCRIBE, "PROD_SPOT", 9);
     assert(rc == 0);
     
