@@ -135,7 +135,7 @@ int main(int argc, char *argv[])
            minspots = MINSPOTS, maxapart = MAXAPART;
 
     static struct Spot pipeline[SPOTSWINDOW];
-    static struct Skimmer skimmer[MAXSKIMMERS], temp;
+    static struct Skimmer skimmer[MAXSKIMMERS];
 
     // Avoid that unitialized entries in pipeline are used
     for (i = 0; i < SPOTSWINDOW; i++)
@@ -387,6 +387,7 @@ int main(int argc, char *argv[])
     }
 
     // Sort by callsign (bubble)
+    static struct Skimmer temp;
     for (i = 0; i < skimmers - 1; ++i)
     {
         for (j = 0; j < skimmers - 1 - i; ++j)
