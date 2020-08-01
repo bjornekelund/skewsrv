@@ -387,86 +387,96 @@ int main(int argc, char *argv[])
     stime = *localtime(&lastspot);
     (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
 
-    printf("%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
-    printf("%d spots (%.1f%%) were from reference skimmers (*).\n",  refspots, 100.0 * refspots / totalspots);
+	if (verbose)
+	{
+	    printf("%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
+	    printf("%d spots (%.1f%%) were from reference skimmers (*).\n",  refspots, 100.0 * refspots / totalspots);
 
-    printf("Average spot flow was %.0f per minute from %d active %s skimmers.\n",
-        60 * totalspots / difftime(lastspot, firstspot), skimmers, spotmode);
+	    printf("Average spot flow was %.0f per minute from %d active %s skimmers.\n",
+    	    60 * totalspots / difftime(lastspot, firstspot), skimmers, spotmode);
 
-    printf("%d spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n", usedspots, skimmers);
-    printf(" * Mode of spot is %s.\n" , spotmode);
-    printf(" * Also spotted by a reference skimmer within %d spots.\n", SPOTSWINDOW);
-    printf(" * Also spotted by a reference skimmer within %ds. \n", maxapart);
-    printf(" * SNR is %ddB or higher. \n", minsnr);
-    printf(" * Frequency is %dkHz or higher. \n", MINFREQ);
-    printf(" * Frequency deviation from reference skimmer is %.1fkHz or less.\n", MAXERR / 10.0);
-    printf(" * At least %d spots from same skimmer in data set.\n", minspots);
+	    printf("%d spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n", usedspots, skimmers);
+	    printf(" * Mode of spot is %s.\n" , spotmode);
+	    printf(" * Also spotted by a reference skimmer within %d spots.\n", SPOTSWINDOW);
+	    printf(" * Also spotted by a reference skimmer within %ds. \n", maxapart);
+	    printf(" * SNR is %ddB or higher. \n", minsnr);
+	    printf(" * Frequency is %dkHz or higher. \n", MINFREQ);
+	    printf(" * Frequency deviation from reference skimmer is %.1fkHz or less.\n", MAXERR / 10.0);
+	    printf(" * At least %d spots from same skimmer in data set.\n", minspots);
 
     // Present results for each skimmer
-    printf("%-9s", "Skimmer");
-    for (int bi = 0; bi < BANDS; bi++)
-        printf("%10s", bandname[bi]);
-    printf("\n");
+	    printf("%-9s", "Skimmer");
+	    for (int bi = 0; bi < BANDS; bi++)
+	        printf("%10s", bandname[bi]);
+	    printf("\n");
 
-    for (int bi = 0; bi < 4 * BANDS + 9; bi++)
-        printf("-");
-    printf("\n");
+	    for (int bi = 0; bi < 4 * BANDS + 9; bi++)
+	        printf("-");
+	    printf("\n");
 
-    for (int si = 0; si < skimmers; si++)
-    {
-        printf("%-9s", skimmer[si].call);
-        for (int bi = 0; bi < BANDS; bi++)
-        {
-            if (skimmer[si].band[bi].count != 0)
-                printf("%+7.2f(%d)", skimmer[si].band[bi].avdev, skimmer[si].band[bi].quality);
-            else
-                printf("          ");
-        }
-        printf("\n");
-    }
+	    for (int si = 0; si < skimmers; si++)
+	    {
+	        printf("%-9s", skimmer[si].call);
+	        for (int bi = 0; bi < BANDS; bi++)
+    	    {
+        	    if (skimmer[si].band[bi].count != 0)
+            	    printf("%+7.2f(%d)", skimmer[si].band[bi].avdev, skimmer[si].band[bi].quality);
+	            else
+    	            printf("          ");
+        	}
+	        printf("\n");
+    	}
+
+	}
 
     time(&nowtime);
 
     for (int si = 0; si < skimmers; si++)
     {
         strcpy(pbuffer, "SKEW_TEST_24H");
-        printf("%s ", pbuffer);
-        zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);        
+		if (verbose) printf("%s ", pbuffer);
+        zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
-        snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%ld,\"24h_per_band\":{", 
+        snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%ld,\"24h_per_band\":{",
             skimmer[si].call, nowtime);
         int bp = strlen(pbuffer);
         bool first = true;
         for (int bi = 0; bi < BANDS; bi++)
         {
-            if (skimmer[si].band[bi].count > minspots)
+			bool nodata = skimmer[si].band[bi].count < minspots;
+
+            if (!nodata)
             {
                 snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
                 snprintf(quals, STRLEN, "%d", skimmer[si].band[bi].quality);
                 snprintf(counts, STRLEN, "%d", skimmer[si].band[bi].count);
             }
-            else
-            {
-                strcpy(avdevs, "null");
-                strcpy(quals, "null");
-                strcpy(counts, "null");
-            }            
+
+			printf("avdevs=\"%s\", quals=\"%s\", counts=\"%s\", ", nodata ? "null" : avdevs, 
+				nodata ? "null" : quals, nodata ? "null" : counts);
 
             snprintf(tmps, BUFLEN, "%s\"%s\":{%s,%s,%s}", first ? "" : ",",
-                bandname[bi], avdevs, quals, counts);
+                bandname[bi], nodata ? "null" : avdevs, nodata ? "null" : quals, nodata ? "null" : counts);
+
+            printf("tmps=\"%s\"\n", tmps);
+
             strcpy(&pbuffer[bp], tmps);
             bp += strlen(tmps);
             first = false;
         }
+
         pbuffer[bp++] = '}';
         pbuffer[bp++] = '}';
         pbuffer[bp] = '\0';
+
         zmq_send(publisher, pbuffer, bp, 0);
-        printf("%s\n", pbuffer);
+        if (verbose) printf("%s\n", pbuffer);
     }
 
     zmq_close(publisher);
     zmq_ctx_destroy(pcontext);
+
+    printf("Done processing and reporting\n");
 
     return 0;
 }

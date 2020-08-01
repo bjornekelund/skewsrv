@@ -1,0 +1,25 @@
+#!/bin/bash
+# Calculate and report skew estimates based on
+# previous day's RBN data
+
+# Move to correct folder to allow cron execution on RPi
+[ -d "/home/pi/skewsrv" ] && cd /home/pi/skewsrv
+
+FOLDER="rbndata"
+DATE=`date -u --date="1 days ago" +%Y%m%d`
+OLDDATE=`date -u --date="10 days ago" +%Y%m%d`
+REFFILE="reference"
+CSVFILE=$FOLDER/rbndata.csv
+
+[ -d $FOLDER ] || mkdir $FOLDER
+
+echo "Job started "`date -u "+%F %T" `
+START=$SECONDS
+
+# Do the work
+
+./skewday -f $CSVFILE
+
+printf "done.\n"
+
+exit
