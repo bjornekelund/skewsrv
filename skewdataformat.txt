@@ -24,11 +24,11 @@ SKEW_TEST_REF {"time":eee, "ref_count":dd,"ref_call":["call1","call2",...]}
 * call# is callsign of reference skimmmers.
 
 SKEW_TEST_24H {"node":callsign, "time":eee, "24h_skew":nnn, 
-  "24h_per_band":{"160m":{nnn, qqq, ccc}, "160m":{nnn, qqq, ccc}, 
-  "80m":{nnn, qqq, ccc}, "60m":{nnn, qqq, ccc}, "40m":{nnn, qqq, ccc}, 
-  "30m":{nnn, qqq, ccc}, "20m":{nnn, qqq, ccc}, "17m":{nnn, qqq, ccc}, 
-  "15m":{nnn, qqq, ccc}, "12m":{nnn, qqq, ccc}, "10m":{nnn, qqq, ccc}, 
-  "6m":{nnn, qqq, ccc}, "2m":{nnn, qqq, ccc}}}
+  "24h_per_band":{"160m":{nnn, qqq, ccc}, "80m":{nnn, qqq, ccc}, 
+  "60m":{nnn, qqq, ccc}, "40m":{nnn, qqq, ccc}, "30m":{nnn, qqq, ccc}, 
+  "20m":{nnn, qqq, ccc}, "17m":{nnn, qqq, ccc}, "15m":{nnn, qqq, ccc}, 
+  "12m":{nnn, qqq, ccc}, "10m":{nnn, qqq, ccc}, "6m":{nnn, qqq, ccc}, 
+  "2m":{nnn, qqq, ccc}}}
 
 * callsign is callsign of skimmer
 * eee is time of the update in second-based epoch
