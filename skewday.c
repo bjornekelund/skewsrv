@@ -42,16 +42,8 @@
 
 #define BANDNAMES {"160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m" }
 #define BANDS 12
-
-// Print to stderr. Print also to stdout if piped.
-static void printboth(char *outstring, bool quiet)
-{
-    if (!quiet)
-        fprintf(stderr, "%s", outstring);
-
-    if (isatty(STDOUT_FILENO) == 0)
-        printf("%s", outstring);
-}
+#define BUFLEN 1024
+#define ZMQPUBURL "tcp://*:5568"
 
 // Convert a frequeny in kHz into an index 0-11 for 160-2m.
 int fqbandindex(double freq)
@@ -127,16 +119,16 @@ int main(int argc, char *argv[])
     };
 
     FILE   *fp, *fr;
-    time_t starttime, stoptime, firstspot, lastspot;
-    struct tm *timeinfo, stime;
+    time_t firstspot, lastspot, nowtime;
+    struct tm stime;
     char   filename[LINELEN] = "", line[LINELEN] = "",
-           outstring[LINELEN], referenceskimmer[MAXREF][STRLEN], *spotmode = "CW",
-           reffilename[STRLEN] = REFFILENAME;
+           referenceskimmer[MAXREF][STRLEN], *spotmode = "CW",
+           reffilename[STRLEN] = REFFILENAME, pbuffer[BUFLEN],
+           avdevs[STRLEN], quals[STRLEN], counts[STRLEN], tmps[STRLEN];
            // Human friendly names of bands
     const char *bandname[] = BANDNAMES;
-    bool   verbose = false, reference,
-           quiet = false, forweb = false;
-    int    i, j, referenceskimmers = 0, totalspots = 0, usedspots = 0, c,
+    bool   verbose = false, reference;
+    int    i, j, c, referenceskimmers = 0, totalspots = 0, usedspots = 0,
            spp = 0, refspots = 0, minsnr = MINSNR, skimmers = 0,
            minspots = MINSPOTS, maxapart = MAXAPART;
 
@@ -147,7 +139,7 @@ int main(int argc, char *argv[])
     for (i = 0; i < SPOTSWINDOW; i++)
         pipeline[i].analyzed = true;
 
-    while ((c = getopt(argc, argv, "dqrwx:f:m:n:c:")) != -1)
+    while ((c = getopt(argc, argv, "drx:f:m:n:c:")) != -1)
     {
         switch (c)
         {
@@ -159,12 +151,6 @@ int main(int argc, char *argv[])
                 break;
             case 'd': // Verbose debug mode
                 verbose = true;
-                break;
-            case 'w': // Format for web
-                forweb = true;
-                break;
-            case 'q': // Quiet, do not print to stderr
-                quiet = true;
                 break;
             case 'm': // Minimum number of spots to consider skimmer
                 minspots = atoi(optarg);
@@ -222,11 +208,11 @@ int main(int argc, char *argv[])
 
     (void)fclose(fr);
 
-    (void)time(&starttime);
-    timeinfo = localtime(&starttime);
+    void *pcontext = zmq_ctx_new();
+    void *publisher = zmq_socket(pcontext, ZMQ_PUB);
+    int trc = zmq_bind(publisher, ZMQPUBURL);
 
-    if (verbose && !quiet)
-        fprintf(stderr, "Starting at %s", asctime(timeinfo));
+    printf("Established publisher context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
 
     fp = fopen(filename, "r");
 
@@ -235,6 +221,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Can not open file \"%s\". Abort.\n", filename);
         return 1;
     }
+
+    printf("Opened RBN archive file %s\n", filename);
 
     while (fgets(line, LINELEN, fp) != NULL)
     {
@@ -266,8 +254,8 @@ int main(int argc, char *argv[])
             // If SNR is sufficient and frequency OK and mode is right
             if (snr >= minsnr && freq >= MINFREQ && strcmp(mode, spotmode) == 0)
             {
-
                 reference = false;
+
                 // Check if this spot is from a reference skimmer
                 for (i = 0; i < referenceskimmers; i++)
                 {
@@ -334,7 +322,7 @@ int main(int argc, char *argv[])
                                     skimmer[skimmers].band[bi].last = pipeline[i].time;
                                     skimmer[skimmers].reference = pipeline[i].reference;
                                     skimmers++;
-                                    if (verbose && !quiet)
+                                    if (verbose)
                                         fprintf(stderr, "Found skimmer #%d: %s \n", skimmers, pipeline[i].de);
                                 }
                             }
@@ -369,7 +357,7 @@ int main(int argc, char *argv[])
             if (skimmer[si].band[bi].count > 0)
             {
                 int quality = (int)round(3.0 * log10(skimmer[si].band[bi].count));
-                skimmer[si].band[bi].quality = (quality > 10.0) ? 10 : quality;
+                skimmer[si].band[bi].quality = (quality > 9.0) ? 9 : quality;
             }
             else
             {
@@ -392,62 +380,27 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (isatty(STDOUT_FILENO) == 0 && !forweb)
-        printf("Skimmer accuracy analysis based on RBN offline data.\n\n");
-
     // Print results
     char firsttimestring[LINELEN], lasttimestring[LINELEN];
     stime = *localtime(&firstspot);
     (void)strftime(firsttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
     stime = *localtime(&lastspot);
     (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
-    sprintf(outstring, "%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
-    printboth(outstring, quiet);
 
-    sprintf(outstring, "%d spots (%.1f%%) were from reference skimmers (*).\n", 
-        refspots, 100.0 * refspots / totalspots);
-    printboth(outstring, quiet);
+    printf("%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
+    printf("%d spots (%.1f%%) were from reference skimmers (*).\n",  refspots, 100.0 * refspots / totalspots);
 
-    sprintf(outstring, "Average spot flow was %.0f per minute from %d active %s skimmers.\n",
-    60 * totalspots / difftime(lastspot, firstspot), skimmers, spotmode);
-    printboth(outstring, quiet);
+    printf("Average spot flow was %.0f per minute from %d active %s skimmers.\n",
+        60 * totalspots / difftime(lastspot, firstspot), skimmers, spotmode);
 
-    sprintf(outstring, "%d spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n",
-        usedspots, skimmers);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * Mode of spot is %s.\n" , spotmode);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * Also spotted by a reference skimmer within %d spots.\n", SPOTSWINDOW);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * Also spotted by a reference skimmer within %ds. \n", maxapart);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * SNR is %ddB or higher. \n", minsnr);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * Frequency is %dkHz or higher. \n", MINFREQ);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * Frequency deviation from reference skimmer is %.1fkHz or less.\n", MAXERR / 10.0);
-    printboth(outstring, quiet);
-
-    sprintf(outstring, " * At least %d spots from same skimmer in data set.\n", minspots);
-    printboth(outstring, quiet);
-
-    (void)time(&stoptime);
-
-    if (forweb)
-    {
-        printf("\n");
-    }
-    else if (isatty(STDOUT_FILENO) == 0)
-    {
-        sprintf(outstring, "Total processing time was %.0f seconds.\n\n", difftime(stoptime, starttime));
-        printboth(outstring, quiet);
-    }
+    printf("%d spots from %d skimmers qualified for analysis by meeting\nthe following criteria:\n", usedspots, skimmers);
+    printf(" * Mode of spot is %s.\n" , spotmode);
+    printf(" * Also spotted by a reference skimmer within %d spots.\n", SPOTSWINDOW);
+    printf(" * Also spotted by a reference skimmer within %ds. \n", maxapart);
+    printf(" * SNR is %ddB or higher. \n", minsnr);
+    printf(" * Frequency is %dkHz or higher. \n", MINFREQ);
+    printf(" * Frequency deviation from reference skimmer is %.1fkHz or less.\n", MAXERR / 10.0);
+    printf(" * At least %d spots from same skimmer in data set.\n", minspots);
 
     // Present results for each skimmer
     printf("%-9s", "Skimmer");
@@ -472,11 +425,48 @@ int main(int argc, char *argv[])
         printf("\n");
     }
 
-    if (forweb)
+    time(&nowtime);
+
+    for (int si = 0; si < skimmers; si++)
     {
-        strftime(outstring, LINELEN, "%Y-%m-%d %H:%M:%S UTC", gmtime(&stoptime));
-        printf("\nLast updated %s\n", outstring);
+        strcpy(pbuffer, "SKEW_TEST_24H");
+        printf("%s ", pbuffer);
+        zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);        
+
+        snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%ld,\"24h_per_band\":{", 
+            skimmer[si].call, nowtime);
+        int bp = strlen(pbuffer);
+        bool first = true;
+        for (int bi = 0; bi < BANDS; bi++)
+        {
+            if (skimmer[si].band[bi].count > 0)
+            {
+                snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
+                snprintf(quals, STRLEN, "%d", skimmer[si].band[bi].quality);
+                snprintf(counts, STRLEN, "%d", skimmer[si].band[bi].count);
+            }
+            else
+            {
+                strcpy(avdevs, "null");
+                strcpy(quals, "null");
+                strcpy(counts, "null");
+            }            
+
+            snprintf(tmps, BUFLEN, "%s%s:{\"%s,%s,%s}", first ? "" : ",",
+                bandname[bi], avdevs, quals, counts);
+            strcpy(&pbuffer[bp], tmps);
+            bp += strlen(tmps);
+            first = false;
+        }
+        pbuffer[bp++] = '}';
+        pbuffer[bp++] = '}';
+        pbuffer[bp] = '\0';
+        zmq_send(publisher, pbuffer, bp, 0);
+        printf("%s\n", pbuffer);
     }
+
+    zmq_close(publisher);
+    zmq_ctx_destroy(pcontext);
 
     return 0;
 }

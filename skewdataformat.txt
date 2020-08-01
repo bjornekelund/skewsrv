@@ -1,32 +1,35 @@
 SKEW_TEST_SKEW {"node":callsign, "time":eee, "timeout":ttt, "spots":sss, "period":ppp, 
-"skew":www, skew_per_band:{"160m":nnn, "80m":nnn, "60m":nnn, "40m":nnn, "30m":nnn, "20m":nnn, "17m":nnn, 
-"15m":nnn, "12m":nnn, "10m":nnn, "6m":nnn, "2m":nnn}}
+  "skew":www, "skew_per_band":{"160m":nnn, "80m":nnn, "60m":nnn, "40m":nnn, "30m":nnn, 
+  "20m":nnn, "17m":nnn, "15m":nnn, "12m":nnn, "10m":nnn, "6m":nnn, "2m":nnn}}
 
-callsign is callsign of skimmer
-
-ttt is the time out in seconds for when considering a skimmer 
-(or a band for a skimmer) inactive.
-
-sss is the number of spots since the last update
-
-ppp is the number of seconds since the last update
-
-eee is time of the update in second epoch.
-
-www is a weighted skew in ppm across active bands. 
-Number has two decimals and sign when negative. Period as decimal separator. 
-null if no spots on any band within the last ttt seconds. 
-
-nnn is the skew for a particular band. 
-Number has two decimals and sign when negative. Period as decimal separator. 
-null if no spots on band in question within the last ttt seconds. 
-
-A skimmer inactive on all bands ("skew":null) is only reported once and will not reported again until active again.
+* callsign is callsign of skimmer
+* ttt is the time out in seconds for when considering a skimmer 
+  (or a band for a skimmer) inactive.
+* sss is the number of spots since the last update
+* ppp is the number of seconds since the last update
+* eee is time of the update in second epoch.
+* www is a weighted skew in ppm across active bands. 
+  Number has two decimals and sign when negative. Period as decimal separator. 
+  null if no spots on any band within the last ttt seconds. 
+* nnn is the skew for a particular band. 
+  Number has two decimals and sign when negative. Period as decimal separator. 
+  null if no spots on band in question within the last ttt seconds. 
+* A skimmer inactive on all bands ("skew":null) is only reported once and 
+  will not reported again until active again.
 
 SKEW_TEST_REF {"time":eee, "ref_count":dd,"ref_call":["call1","call2",...]}
 
-eee is time of the update in second epoch.
+* eee is time of the update in second-based epoch.
+* dd is number of active reference skimmers. 
+* call# is callsign of reference skimmmers.
 
-dd is number of active reference skimmers. 
+SKEW_TEST_24H {"node":callsign, "time":eee, "24h_per_band":{"160m":{nnn, qqq, ccc}, 
+  "160m":{nnn, qqq, ccc}, "80m":{nnn, qqq, ccc}, "60m":{nnn, qqq, ccc}, "40m":{nnn, qqq, ccc}, 
+  "30m":{nnn, qqq, ccc}, "20m":{nnn, qqq, ccc}, "17m":{nnn, qqq, ccc}, "15m":{nnn, qqq, ccc}, 
+  "12m":{nnn, qqq, ccc}, "10m":{nnn, qqq, ccc}, "6m":{nnn, qqq, ccc}, "2m":{nnn, qqq, ccc}}}
 
-call# is callsign of reference skimmmers.
+* callsign is callsign of skimmer
+* eee is time of the update in second-based epoch
+* nnn is skew in ppm, float with sign
+* qqq is reliability metric 0-9, integer
+* ccc is number of analyzed spots, integer

@@ -277,8 +277,8 @@ int main(int argc, char *argv[])
     
     printf("Connecting to ZMQ queue...\n");
 
-    void *lcontext = zmq_ctx_new();
-    void *subscriber = zmq_socket(lcontext, ZMQ_SUB);
+    void *scontext = zmq_ctx_new();
+    void *subscriber = zmq_socket(scontext, ZMQ_SUB);
     int lrc = zmq_connect(subscriber, zmqsuburl);
    
     // Subscribe to queue messages
@@ -288,8 +288,8 @@ int main(int argc, char *argv[])
     int rcvto = 60 * 1000;
     (void)zmq_setsockopt(subscriber, ZMQ_RCVTIMEO, &rcvto, sizeof(rcvto));
 
-    void *tcontext = zmq_ctx_new();
-    void *publisher = zmq_socket(tcontext, ZMQ_PUB);
+    void *pcontext = zmq_ctx_new();
+    void *publisher = zmq_socket(pcontext, ZMQ_PUB);
     int trc = zmq_bind(publisher, zmqpuburl);
 
     printf("Established subscriber context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
@@ -716,7 +716,9 @@ int main(int argc, char *argv[])
     }
 
     zmq_close(subscriber);
-    zmq_ctx_destroy(lcontext);
+    zmq_close(publisher);
+    zmq_ctx_destroy(scontext);
+    zmq_ctx_destroy(pcontext);
 
     return 0;
 }
