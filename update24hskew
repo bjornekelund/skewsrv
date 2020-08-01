@@ -20,6 +20,6 @@ START=$SECONDS
 
 ./skewday -f $CSVFILE
 
-printf "done.\n"
+echo "Job done "`date -u "+%F %T" `
 
 exit
