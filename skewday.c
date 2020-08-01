@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
         bool first = true;
         for (int bi = 0; bi < BANDS; bi++)
         {
-            if (skimmer[si].band[bi].count > 0)
+            if (skimmer[si].band[bi].count > minspots)
             {
                 snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
                 snprintf(quals, STRLEN, "%d", skimmer[si].band[bi].quality);
@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
                 strcpy(counts, "null");
             }            
 
-            snprintf(tmps, BUFLEN, "%s%s:{\"%s,%s,%s}", first ? "" : ",",
+            snprintf(tmps, BUFLEN, "%s\"%s\":{%s,%s,%s}", first ? "" : ",",
                 bandname[bi], avdevs, quals, counts);
             strcpy(&pbuffer[bp], tmps);
             bp += strlen(tmps);
