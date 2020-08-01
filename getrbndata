@@ -1,5 +1,6 @@
 #!/bin/bash
 # get a full month of data, unpack and delete zip files
+#set -x
 YEAR="2020"
 MONTH="07"
 FOLDER="rbnfiles"

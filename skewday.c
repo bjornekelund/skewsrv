@@ -28,7 +28,7 @@
 // Minimum SNR required for spot to be used
 #define MINSNR 3
 // Minimum frequency for spot to be used
-#define MINFREQ 7000
+#define MINFREQ 1000
 // Minimum number of spots to be analyzed
 #define MINSPOTS 5
 // Maximum difference from reference spot times 100Hz
@@ -452,7 +452,7 @@ int main(int argc, char *argv[])
     // Present results for each skimmer
     printf("%-9s", "Skimmer");
     for (int bi = 0; bi < BANDS; bi++)
-        printf("%4s", bandname[bi]);
+        printf("%10s", bandname[bi]);
     printf("\n");
 
     for (int bi = 0; bi < 4 * BANDS + 9; bi++)
@@ -464,7 +464,10 @@ int main(int argc, char *argv[])
         printf("%-9s", skimmer[si].call);
         for (int bi = 0; bi < BANDS; bi++)
         {
-            printf("%+6.2f(%d)", skimmer[si].band[bi].avdev, skimmer[si].band[bi].quality);
+            if (skimmer[si].band[bi].count != 0)
+                printf("%+7.2f(%d)", skimmer[si].band[bi].avdev, skimmer[si].band[bi].quality);
+            else
+                printf("          ");
         }
         printf("\n");
     }
