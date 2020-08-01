@@ -61,3 +61,7 @@ rbndata
 testmax
 exptx
 skewsrv
+*.zip
+*save*
+skewday
+.vscode/c_cpp_properties.json
