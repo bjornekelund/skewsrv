@@ -452,13 +452,13 @@ int main(int argc, char *argv[])
                 snprintf(counts, STRLEN, "%d", skimmer[si].band[bi].count);
             }
 
-			printf("avdevs=\"%s\", quals=\"%s\", counts=\"%s\", ", nodata ? "null" : avdevs, 
-				nodata ? "null" : quals, nodata ? "null" : counts);
+//			printf("avdevs=\"%s\", quals=\"%s\", counts=\"%s\", ", nodata ? "null" : avdevs, 
+//				nodata ? "null" : quals, nodata ? "null" : counts);
 
             snprintf(tmps, BUFLEN, "%s\"%s\":{%s,%s,%s}", first ? "" : ",",
                 bandname[bi], nodata ? "null" : avdevs, nodata ? "null" : quals, nodata ? "null" : counts);
 
-            printf("tmps=\"%s\"\n", tmps);
+//            printf("tmps=\"%s\"\n", tmps);
 
             strcpy(&pbuffer[bp], tmps);
             bp += strlen(tmps);
