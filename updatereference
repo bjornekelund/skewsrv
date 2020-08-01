@@ -3,7 +3,7 @@
 # Built to be called from script updateweb
 
 # Move to correct folder to allow cron execution on RPi
-[ -d "/home/pi/rbn-server-skew" ] && cd /home/pi/rbn-server-skew
+[ -d "/home/pi/skewsrv" ] && cd /home/pi/rbn-server-skew
 
 FOLDER="rbndata"
 DATE=`date -u --date="1 days ago" +%Y%m%d`
