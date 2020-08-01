@@ -3,10 +3,13 @@ gcc			= ${cc} -Wall
 lint		= cppcheck
 libs		= -lm -lzmq
 
-all: 		skewsrv exp exp2 testmax exptx
+all: 		skewsrv exp exp2 testmax exptx skewday
 
 skewsrv:	skewsrv.c Makefile
 			$(gcc) -o skewsrv skewsrv.c $(libs)
+
+skewday:	skewday.c Makefile
+			$(gcc) -o skewday skewday.c $(libs)
 
 exp:		exp.c Makefile
 			$(gcc) -o exp exp.c $(libs)
