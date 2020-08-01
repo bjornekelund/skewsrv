@@ -113,8 +113,10 @@ int main(int argc, char *argv[])
 
     struct Skimmer
     {
-        char call[STRLEN]; // Skimmer callsign
-        bool reference;    // If a reference skimmer
+        char call[STRLEN];  // Skimmer callsign
+        int count;          // Total spot count for skimmer 
+        double avdev;       // Weighted average of deviation for skimmer
+        bool reference;     // If a reference skimmer
         struct Bandinfo band[BANDS];
     };
 
@@ -350,20 +352,38 @@ int main(int argc, char *argv[])
     // Calculate statistics
     for (int si = 0; si < skimmers; si++)
     {
+        skimmer[si].count = 0;
         for (int bi = 0; bi < BANDS; bi++)
         {
             skimmer[si].band[bi].avdev = 1000000.0 * (skimmer[si].band[bi].accadj / skimmer[si].band[bi].count - 1.0);
             // Attempt for quality metric. 20 spots => 100 spots => 6
+            skimmer[si].count += skimmer[si].band[bi].count;
             if (skimmer[si].band[bi].count > 0)
             {
-                int quality = (int)round(3.0 * log10(skimmer[si].band[bi].count));
+                int quality = (int)round(9.0 * log10(skimmer[si].band[bi].count) / log10(2000));
                 skimmer[si].band[bi].quality = (quality > 9.0) ? 9 : quality;
             }
-            else
+        }
+    }
+
+    // Calculate average error across bands.
+    // Only include 10MHz and below if no higher band have spots
+    // Weight bands by spot count since accumulated deviation is summed
+    // 0 = 160m, 1 = 80m, 2 = 60m, 3 = 40m, 4 = 30m, 5 = 20m
+    for (int si = 0; si < skimmers; si++)
+    {
+        double accadjsum = 0.0;
+        int usedspots  = 0;
+        for (int bi = BANDS - 1; bi >= 0; bi--)
+        {
+            if (skimmer[si].band[bi].count > 0 && (bi > 4 || usedspots == 0))
             {
-                skimmer[si].band[bi].quality = 0;
+                accadjsum += skimmer[si].band[bi].accadj;
+                usedspots += skimmer[si].band[bi].count;
             }
         }
+        // It is safe to divide, we know used is never zero
+        skimmer[si].avdev = 1000000.0 * (accadjsum / (double)usedspots - 1.0);
     }
 
     // Sort by callsign (bubble)
@@ -437,8 +457,8 @@ int main(int argc, char *argv[])
 		if (verbose) printf("%s ", pbuffer);
         zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
-        snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%ld,\"24h_per_band\":{",
-            skimmer[si].call, nowtime);
+        snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"time\":%ld,\"24h_skew\":%.2f,\"24h_per_band\":{",
+            skimmer[si].call, nowtime, skimmer[si].avdev);
         int bp = strlen(pbuffer);
         bool first = true;
         for (int bi = 0; bi < BANDS; bi++)
