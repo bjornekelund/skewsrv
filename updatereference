@@ -1,14 +1,14 @@
 #!/bin/bash
-# Calculate a new set of reference skimmers for the next night's run
-# Built to be called from script updateweb
+# Calculate a new set of reference skimmers
 
 # Move to correct folder to allow cron execution on RPi
-[ -d "/home/pi/skewsrv" ] && cd /home/pi/rbn-server-skew
+[ -d "/home/pi/skewsrv" ] && cd /home/pi/skewsrv
 
 FOLDER="rbndata"
 DATE=`date -u --date="1 days ago" +%Y%m%d`
 OLDDATE=`date -u --date="10 days ago" +%Y%m%d`
 REFFILE="reference"
+ANCHORFILE="anchors"
 TEMPFILE=$FOLDER/$DATE.ref
 DELFILE=$FOLDER/$OLDDATE.ref
 RESULT=$FOLDER/rbndata.txt
@@ -42,7 +42,7 @@ if [[ $FILESIZE != "0" ]]; then
     gunzip < $ZIPFILE > $CSVFILE
     echo "Downloaded yesterday's "$((`wc -l < $CSVFILE` - 2))" spots into $CSVFILE"
 	printf "Selecting list of reference skimmers..."
-	../rbnskew/rbnskew -wqs -f $CSVFILE -c anchors > $RESULT
+	../rbnskew/rbnskew -wqs -f $CSVFILE -c $ANCHORFILE > $RESULT
 
 	echo "# Automatically generated reference file" > $TEMPFILE
 
