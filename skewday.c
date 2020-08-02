@@ -397,7 +397,6 @@ void analyze(char *filename, char *reffilename)
 
 int main(int argc, char *argv[])
 {
-    time_t  nowtime;
     char    filename[LINELEN] = "", pbuffer[BUFLEN],
             reffilename[STRLEN] = REFFILENAME,
             anchfilename[STRLEN] = ANCHORSFILENAME,
@@ -464,7 +463,15 @@ int main(int argc, char *argv[])
     }
 
     // Create new reference file for both own and other use
-    fprintf(fr, "# Automatically generated reference skimmer list\n");
+    char firsttimestring[LINELEN], lasttimestring[LINELEN];
+    struct tm stime;
+    stime = *localtime(&FirstSpot);
+    (void)strftime(firsttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
+    stime = *localtime(&LastSpot);
+    (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
+
+    fprintf(fr, "# Machine generated reference skimmer list based on\n");
+    fprintf(fr, "# %d RBN spots between %s and %s.\n#\n", TotalSpots, firsttimestring, lasttimestring);
 
     fprintf(fr, "# Skimmers with < 0.1ppm deviation from anchor skimmers\n");
     for (int si = 0; si < Skimmers; si++)
@@ -506,13 +513,6 @@ int main(int argc, char *argv[])
     analyze(filename, reffilename);
 
     // Print results
-    char firsttimestring[LINELEN], lasttimestring[LINELEN];
-    struct tm stime;
-    stime = *localtime(&FirstSpot);
-    (void)strftime(firsttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
-    stime = *localtime(&LastSpot);
-    (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
-
 	if (Verbose)
 	{
 	    printf("%d RBN spots between %s and %s.\n", TotalSpots, firsttimestring, lasttimestring);
@@ -562,7 +562,6 @@ int main(int argc, char *argv[])
     	}
 	}
 
-    time(&nowtime);
 
     for (int si = 0; si < Skimmers; si++)
     {
@@ -571,6 +570,9 @@ int main(int argc, char *argv[])
             strcpy(pbuffer, "SKEW_TEST_24H");
             if (Verbose) printf("%s ", pbuffer);
             zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
+
+            time_t  nowtime;
+            time(&nowtime);
 
             snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"ref\":%s,\"time\":%ld,\"24h_skew\":{%.1f,%d,%d}\"24h_per_band\":{",
                 Skimmer[si].call, Skimmer[si].reference ? "true" : "false",
