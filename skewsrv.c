@@ -198,17 +198,17 @@ int fqbandindex(double freq)
     }
 }
 
-void updatereferences()
+void updatereferences(char *reffilename)
 {
     FILE *fr;
     char line[BUFLEN], tmpstring[BUFLEN];
 
-    fr = fopen(REFFILENAME, "r");
+    fr = fopen(reffilename, "r");
     Referenceskimmers = 0;
 
     if (fr == NULL)
     {
-        fprintf(stderr, "Can not open file \"%s\". Abort.\n", REFFILENAME);
+        fprintf(stderr, "Can not open file \"%s\". Abort.\n", reffilename);
         abort();
     }
 
@@ -243,22 +243,26 @@ int main(int argc, char *argv[])
     double spotsperminute = 0.0;
     char zmqsuburl[BUFLEN] = ZMQSUBURL;
     char zmqpuburl[BUFLEN] = ZMQPUBURL;
+    char reffilename[BUFLEN] = REFFILENAME;
     int64_t more = 0;
     size_t more_size = sizeof(more);
 
 
-    while ((c = getopt(argc, argv, "du:t:")) != -1)
+    while ((c = getopt(argc, argv, "ds:p:r:")) != -1)
     {
         switch (c)
         {
             case 'd':
                 debug = true;
                 break;
-            case 'u':
+            case 's':
                 strcpy(zmqsuburl, optarg);
                 break;
-            case '6':
+            case 'p':
                 strcpy(zmqpuburl, optarg);
+                break;
+            case 'r':
+                strcpy(reffilename, optarg);
                 break;
             case '?':
                 fprintf(stderr, USAGE, argv[0]);
@@ -268,7 +272,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    updatereferences();
+    updatereferences(reffilename);
 
     time(&nowtime);
 	lastinactcheck = nowtime;
@@ -689,7 +693,7 @@ int main(int argc, char *argv[])
         if (curt.tm_hour == REFUPDHOUR && curt.tm_min > REFUPDMINUTE && curt.tm_mday != lastday)
         // if (curt.tm_min > 30 && curt.tm_hour != lastday)
         {
-            updatereferences();
+            updatereferences(reffilename);
             lastday = curt.tm_mday;
             // lastday = curt.tm_hour;
             sprintf(tmpstring,
