@@ -55,6 +55,7 @@ printf "Doing a two-pass analysis of the RBN data...\n"
 cp $REFFILE $FOLDER/$DAT.ref
 rm -f $DELFILE
 
-echo "Job done "`date -u "+%F %T" `
+echo "Job ended "`date -u "+%F %T" `
+echo "----"
 
 exit
