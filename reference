@@ -1,19 +1,23 @@
-# Automatically generated reference file
-# Skimmers with 0.0ppm deviation and more than 200 qualified spots
-DL3DTH
-F8DGY
-K9LC
-DE1LON
-# Skimmers with 0.1ppm deviation and more than 200 qualified spots
-SE5E
+# Automatically generated reference skimmer list
+# Skimmers with < 0.1ppm deviation from anchor skimmers
 G4ZFE
-LZ4UX
-DJ9IE
-W1NT
-W1NT-2
-OE9GHV
-SM7IUN
-TF3Y
-# Skimmers with 0.2ppm deviation and more than 200 qualified spots
+KM3T
+AC0C
+JO1YYP
+EA5WU
 SM0IHR
-WZ7I
+W3OA
+OE9GHV
+WB6BEE
+DL3DTH
+SE5E
+SM7IUN
+W3RGA
+K3PA
+AA4VV
+# Skimmers with < 0.2ppm deviation from anchor skimmers
+LZ4UX
+DK0KK
+NN3RP
+LZ7AA
+K9LC

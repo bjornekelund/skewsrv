@@ -27,4 +27,4 @@ clean:
 			rm -f *.o *~
 
 lint:
-			${lint} skew.c
+			${lint} skewsrv.c skewday.c
