@@ -157,7 +157,6 @@ void analyze(char *filename, char *reffilename)
     struct tm stime;
     bool reference;
     FILE *fp, *fr;
-    // int wa9veeskimpos = -1;
 
     fr = fopen(reffilename, "r");
 
@@ -239,11 +238,6 @@ void analyze(char *filename, char *reffilename)
                 firstspot = spottime < firstspot ? spottime : firstspot;
             }
 
-            // if (strcmp(de, "WA9VEE") == 0)
-            // {
-            //     printf("WA9VEE: freq=%.1f snr=%d\n", freq, snr);
-            // }
-
             // If SNR is sufficient and frequency OK and mode is right
             if (snr >= minsnr && freq >= MINFREQ && strcmp(mode, spotmode) == 0)
             {
@@ -292,18 +286,8 @@ void analyze(char *filename, char *reffilename)
                                     }
                                 }
 
-                                // if (strcmp(pipeline[i].de, "WA9VEE") == 0)
-                                // {
-                                //     printf("WA9VEE: freq=%.1f delta=%.1f\n", freq, delta / 10.0);
-                                //     if (skimpos != -1) wa9veeskimpos = skimpos;
-                                // }
-
                                 if (skimpos != -1) // if in the list, update it
                                 {
-                                    // if (skimpos == wa9veeskimpos)
-                                    // {
-                                    //     printf("WA9VEE but call=%s delta=%.1f\n", pipeline[i].de, delta / 10.0);
-                                    // }
                                     skimmer[skimpos].band[bi].accadj += pipeline[i].freq / (10.0 * freq);
                                     skimmer[skimpos].band[bi].count++;
                                     if (pipeline[i].time > skimmer[skimpos].band[bi].last)
@@ -383,11 +367,9 @@ void analyze(char *filename, char *reffilename)
                 usedspots += skimmer[si].band[bi].count;
             }
         }
-        // It is safe to divide, we know used is never zero
-        skimmer[si].avdev = 1000000.0 * (accadjsum / (double)usedspots - 1.0);
 
-        // Temporary rounding
-        // skimmer[si].avdev = round(skimmer[si].avdev * 10.0) / 10.0;
+        // It is safe to divide, we know usedspots is never zero
+        skimmer[si].avdev = 1000000.0 * (accadjsum / (double)usedspots - 1.0);
         skimmer[si].absavdev = fabs(skimmer[si].avdev);
     }
 
@@ -533,7 +515,7 @@ int main(int argc, char *argv[])
     stime = *localtime(&lastspot);
     (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
 
-	if (verbose)
+	if (verbose && false)
 	{
 	    printf("%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
 	    printf("%d spots (%.1f%%) were from reference skimmers (*).\n",  refspots, 100.0 * refspots / totalspots);
@@ -589,7 +571,7 @@ int main(int argc, char *argv[])
         if (skimmer[si].count >= minspots)
         {
             strcpy(pbuffer, "SKEW_TEST_24H");
-            if (verbose && false) printf("%s ", pbuffer);
+            if (verbose) printf("%s ", pbuffer);
             zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
             snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"ref\":%s,\"time\":%ld,\"24h_skew\":{%.2f,%d,%d}\"24h_per_band\":{",
@@ -621,7 +603,7 @@ int main(int argc, char *argv[])
             pbuffer[bp] = '\0';
 
             zmq_send(publisher, pbuffer, bp, 0);
-            if (verbose && false) printf("%s\n", pbuffer);
+            if (verbose) printf("%s\n", pbuffer);
         }
     }
 
