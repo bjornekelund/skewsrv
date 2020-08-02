@@ -473,6 +473,7 @@ int main(int argc, char *argv[])
     }
 
     fprintf(fr, "# Automatically generated reference skimmer list\n");
+
     fprintf(fr, "# Skimmers with < 0.1ppm deviation from anchor skimmers\n");
     for (int si = 0; si < skimmers; si++)
     {
@@ -483,6 +484,7 @@ int main(int argc, char *argv[])
             fprintf(fr, "%s\n", skimmer[si].call);
         }
     }
+
     fprintf(fr, "# Skimmers with < 0.2ppm deviation from anchor skimmers\n");
     for (int si = 0; si < skimmers; si++)
     {
@@ -493,13 +495,17 @@ int main(int argc, char *argv[])
             fprintf(fr, "%s\n", skimmer[si].call);
         }
     }
-    // fprintf(fr, "# Skimmers with < 0.3ppm deviation from anchor skimmers\n");
-    // for (int si = 0; si < skimmers; si++)
-    // {
-    //     if (skimmer[si].absavdev >= 0.2 && skimmer[si].absavdev < 0.3 && skimmer[si].count >= MINREFSPOTS)
-    //         // fprintf(fr, "%s = %.2f\n", skimmer[si].call, skimmer[si].avdev);
-    //         fprintf(fr, "%s\n", skimmer[si].call);
-    // }
+
+    fprintf(fr, "# Skimmers with < 0.3ppm deviation from anchor skimmers\n");
+    for (int si = 0; si < skimmers; si++)
+    {
+        if (skimmer[si].absavdev >= 0.2 && skimmer[si].absavdev < 0.3 && skimmer[si].count >= MINREFSPOTS)
+        {
+            // fprintf(fr, "%s = %.2f\n", skimmer[si].call, skimmer[si].avdev);
+            printf("%s = %.2f\n", skimmer[si].call, skimmer[si].avdev);
+            fprintf(fr, "%s\n", skimmer[si].call);
+        }
+    }
 
     (void)fclose(fr);
 
@@ -515,7 +521,7 @@ int main(int argc, char *argv[])
     stime = *localtime(&lastspot);
     (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
 
-	if (verbose && false)
+	if (verbose)
 	{
 	    printf("%d RBN spots between %s and %s.\n", totalspots, firsttimestring, lasttimestring);
 	    printf("%d spots (%.1f%%) were from reference skimmers (*).\n",  refspots, 100.0 * refspots / totalspots);
