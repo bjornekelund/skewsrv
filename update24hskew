@@ -52,7 +52,7 @@ printf "Doing a two-pass analysis of the RBN data...\n"
 ./skewday -f $CSVFILE
 
 # Save the five most recent reference files
-cp $REFFILE $FOLDER/$DAT.ref
+cp $REFFILE $FOLDER/$DATE.ref
 rm -f $DELFILE
 
 echo "Job ended "`date -u "+%F %T" `

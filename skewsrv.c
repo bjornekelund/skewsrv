@@ -631,7 +631,7 @@ int main(int argc, char *argv[])
                         spots += skimmer[si].band[bi].count - skimmer[si].band[bi].lastcount;
                         skimmer[si].band[bi].lastcount = skimmer[si].band[bi].count;
                     }
-                    snprintf(avdevs, STRLEN, "%.2f", skimmer[si].avdev);
+                    snprintf(avdevs, STRLEN, "%.1f", skimmer[si].avdev);
                     snprintf(pbuffer, BUFLEN, 
                         "{\"node\":\"%s\",\"time\":%ld,\"timeout\":%d,\"spots\":%d,\"period\":%.0lf,\"skew\":%s,\"skew_per_band\":{", 
                         skimmer[si].call, nowtime, MAXINACT, spots, elapsed, skimmer[si].active ? avdevs : "null");
@@ -639,7 +639,7 @@ int main(int argc, char *argv[])
                     bool first = true;
                     for (int bi = 0; bi < BANDS; bi++)
                     {
-                        snprintf(avdevs, STRLEN, "%.2f", skimmer[si].band[bi].avdev);
+                        snprintf(avdevs, STRLEN, "%.1f", skimmer[si].band[bi].avdev);
                         snprintf(tmpstring, BUFLEN, "%s\"%s\":%s", first ? "" : ",",
                             bandname[bi], skimmer[si].band[bi].active ? avdevs : "null");
                         strcpy(&pbuffer[bp], tmpstring);
