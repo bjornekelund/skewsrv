@@ -23,7 +23,7 @@ SKEW_TEST_REF {"time":eee, "ref_count":dd,"ref_call":["call1","call2",...]}
 * dd is number of active reference skimmers. 
 * call# is callsign of reference skimmmers.
 
-SKEW_TEST_24H {"node":callsign, "time":eee, "24h_skew":nnn, 
+SKEW_TEST_24H {"node":callsign, "ref":bbb, "time":eee, "24h_skew":{nnn, qqq, ccc},
   "24h_per_band":{"160m":{nnn, qqq, ccc}, "80m":{nnn, qqq, ccc}, 
   "60m":{nnn, qqq, ccc}, "40m":{nnn, qqq, ccc}, "30m":{nnn, qqq, ccc}, 
   "20m":{nnn, qqq, ccc}, "17m":{nnn, qqq, ccc}, "15m":{nnn, qqq, ccc}, 
@@ -31,6 +31,7 @@ SKEW_TEST_24H {"node":callsign, "time":eee, "24h_skew":nnn,
   "2m":{nnn, qqq, ccc}}}
 
 * callsign is callsign of skimmer
+* bbb is true if node is reference skimmer, else false
 * eee is time of the update in second-based epoch
 * nnn is skew in ppm, float with sign
 * qqq is reliability metric 0-9, integer
