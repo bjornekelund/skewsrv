@@ -15,12 +15,13 @@
 #define LINELEN 128
 // Time format in RBN data file
 #define FMT "%Y-%m-%d %H:%M:%S"
-// Number of most recent spots considered in analysis
-#define SPOTSWINDOW 1000
 // Maximum number of reference skimmers
 #define MAXREF 100
 // Maximum number of skimmers supported
 #define MAXSKIMMERS 500
+
+// Number of most recent spots considered in analysis
+#define SPOTSWINDOW 1000
 // Usage string
 #define USAGE "Usage: %s -f file [-dr] [-t call] [-n N] [-m N] [-x sec]\n"
 // Max number of seconds apart from a reference spot
@@ -28,8 +29,8 @@
 // Minimum SNR required for spot to be used
 #define MINSNR 6
 // Minimum frequency for spot to be used
-#define MINFREQ 1000
-// Minimum number of spots to be analyzed
+#define MINFREQ 1800
+// Minimum number of spots to be report results
 #define MINSPOTS 10
 // Maximum difference from reference spot times in kHz
 #define MAXERR 0.5
@@ -471,9 +472,10 @@ int main(int argc, char *argv[])
     (void)strftime(lasttimestring, LINELEN, "%Y-%m-%d %H:%M", &stime);
 
     fprintf(fr, "# Machine generated reference skimmer list based on\n");
-    fprintf(fr, "# %d RBN spots between %s and %s.\n#\n", TotalSpots, firsttimestring, lasttimestring);
+    fprintf(fr, "# %d RBN spots between %s and %s.\n", TotalSpots, firsttimestring, lasttimestring);
+    fprintf(fr, "# Only skimmers with more than %d qualified spots are considered.\n#\n", MINREFSPOTS);
 
-    fprintf(fr, "# Skimmers with < 0.1ppm deviation from anchor skimmers\n");
+    fprintf(fr, "# Skimmers with < 0.1ppm deviation from anchor skimmers.\n");
     for (int si = 0; si < Skimmers; si++)
     {
         if (Skimmer[si].absavdev < 0.1 && Skimmer[si].count >= MINREFSPOTS)
@@ -484,7 +486,7 @@ int main(int argc, char *argv[])
     }
     if (Verbose) printf("\n");
 
-    fprintf(fr, "# Skimmers with < 0.2ppm deviation from anchor skimmers\n");
+    fprintf(fr, "# Skimmers with < 0.2ppm deviation from anchor skimmers.\n");
     for (int si = 0; si < Skimmers; si++)
     {
         if (Skimmer[si].absavdev >= 0.1 && Skimmer[si].absavdev < 0.2 && Skimmer[si].count >= MINREFSPOTS)
@@ -495,7 +497,7 @@ int main(int argc, char *argv[])
     }
     if (Verbose) printf("\n");
 
-    fprintf(fr, "# Skimmers with < 0.3ppm deviation from anchor skimmers\n");
+    fprintf(fr, "# Skimmers with < 0.3ppm deviation from anchor skimmers.\n");
     for (int si = 0; si < Skimmers; si++)
     {
         if (Skimmer[si].absavdev >= 0.2 && Skimmer[si].absavdev < 0.3 && Skimmer[si].count >= MINREFSPOTS)
@@ -561,7 +563,6 @@ int main(int argc, char *argv[])
             }
     	}
 	}
-
 
     for (int si = 0; si < Skimmers; si++)
     {
