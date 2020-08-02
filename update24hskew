@@ -1,13 +1,15 @@
 #!/bin/bash
-# Calculate and report skew estimates based on
-# previous day's RBN data
+# Calculate and report skew estimates based on previous day's RBN data
+# Also updates the file "reference" based on the same data
 
 # Move to correct folder to allow cron execution on RPi
 [ -d "/home/pi/skewsrv" ] && cd /home/pi/skewsrv
 
 FOLDER="rbndata"
-DATE=`date -u --date="1 days ago" +%Y%m%d`
+#DATE=`date -u --date="1 days ago" +%Y%m%d`
+DATE="20200715"
 OLDDATE=`date -u --date="10 days ago" +%Y%m%d`
+DELFILE=$FOLDER/$OLDDATE.ref
 REFFILE="reference"
 CSVFILE=$FOLDER/rbndata.csv
 ZIPFILE=$FOLDER/rbndata.zip
@@ -43,11 +45,15 @@ if [ "$DATE" != "`cat $TOKEN`" ]; then
     fi
 fi
 
-# Do the work
+# Do the actual work
 
-printf "Selecting list of reference skimmers...\n"
+printf "Doing a two-pass analysis of the RBN data...\n"
 
 ./skewday -f $CSVFILE
+
+# Save the five most recent reference files
+cp $REFFILE $FOLDER/$DATA.ref
+rm -f $DELFILE
 
 echo "Job done "`date -u "+%F %T" `
 
