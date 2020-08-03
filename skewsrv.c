@@ -282,7 +282,7 @@ int main(int argc, char *argv[])
     lastskewupdate = nowtime;
     lastrefupdate = nowtime;
     
-    printf("Connecting to ZMQ queue...\n");
+    fprintf(stderr, "Connecting to ZMQ queue...\n");
 
     void *scontext = zmq_ctx_new();
     void *subscriber = zmq_socket(scontext, ZMQ_SUB);
@@ -299,8 +299,8 @@ int main(int argc, char *argv[])
     void *publisher = zmq_socket(pcontext, ZMQ_PUB);
     int trc = zmq_bind(publisher, zmqpuburl);
 
-    printf("Established subscriber context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
-    printf("Established publisher context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
+    fprintf(stderr, "Established subscriber context and socket with %s status\n", lrc == 0 ? "OK" : "NOT OK");
+    fprintf(stderr, "Established publisher context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
 
     // Avoid that unitialized entries in pipeline are used
     for (int i = 0; i < SPOTSWINDOW; i++)
@@ -336,7 +336,7 @@ int main(int argc, char *argv[])
         {
             if (!connected)
             {
-                printf("Connected to ZMQ queue.\n");
+                fprintf(stderr, "Connected to ZMQ queue.\n");
                 connected = true;
             }
 
@@ -666,7 +666,7 @@ int main(int argc, char *argv[])
                 }
             }
             if (!verbose && !debug)
-                printf("Updated skews at %s.\n", nowtimestring);
+                fprintf(stderr, "Updated skews at %s.\n", nowtimestring);
         }
 
         // Publish list of reference skimmers every REFUPDATEPERIOD seconds
@@ -698,7 +698,7 @@ int main(int argc, char *argv[])
             if (verbose) printf("%s\n", pbuffer);
 
             if (!verbose && !debug)
-                printf("Announced reference skimmers at %s.\n", nowtimestring);
+                fprintf(stderr, "Announced reference skimmers at %s.\n", nowtimestring);
         }
 
         // Read updated list of reference skimmers once per day
@@ -714,12 +714,12 @@ int main(int argc, char *argv[])
             if (debug)
                 printstatus(tmpstring, 3);
             else
-                printf("%s\n", tmpstring);
+                fprintf(stderr, "%s\n", tmpstring);
         }
 
         // If the spots counter reaches maximum, reset counters and clear pipeline
         // but leave skimmer list including averages intact
-        // LONG_MAX is half of ULONG_MAX so the check is safe
+        // LLONG_MAX is half of ULLONG_MAX so the check is safe
 
         if (Totalspots >= LLONG_MAX)
         {
