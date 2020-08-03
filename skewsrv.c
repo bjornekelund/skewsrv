@@ -10,14 +10,14 @@
 
 #define BUFLEN 256
 #define STRLEN 16
-#define TSLEN 20
+#define TSLEN 32
 #define BANDNAMES {"160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m", "2m" }
 #define BANDS 12
 #define CW 1
 #define CQ 1
 #define DX 2
 #define REFFILENAME "reference"
-#define USAGE "Usage: %s [-d]\n"
+#define USAGE "Usage: %s [-d] [-v] [-s url] [-p url] [-r reffile]\n"
 #define ZMQSUBURL "tcp://138.201.156.239:5566"
 //#define ZMQPUBURL "tcp://138.201.156.239:5567"
 #define ZMQPUBURL "tcp://*:5567"
@@ -238,7 +238,7 @@ int main(int argc, char *argv[])
     char sbuffer[BUFLEN], pbuffer[BUFLEN], tmpstring[BUFLEN], avdevs[STRLEN];
     int c, spp = 0, lastday = 0;
     time_t lastinactcheck, lastskewupdate, lastrefupdate, nowtime;
-    bool debug = false, connected = false;
+    bool debug = false, connected = false, verbose = false;
     unsigned long int lastspotcount = 0;
     double spotsperminute = 0.0;
     char zmqsuburl[BUFLEN] = ZMQSUBURL;
@@ -248,12 +248,15 @@ int main(int argc, char *argv[])
     size_t more_size = sizeof(more);
 
 
-    while ((c = getopt(argc, argv, "ds:p:r:")) != -1)
+    while ((c = getopt(argc, argv, "dvs:p:r:")) != -1)
     {
         switch (c)
         {
             case 'd':
                 debug = true;
+                break;
+            case 'v':
+                verbose = true;
                 break;
             case 's':
                 strcpy(zmqsuburl, optarg);
@@ -274,7 +277,7 @@ int main(int argc, char *argv[])
 
     updatereferences(reffilename);
 
-    time(&nowtime);
+    (void)time(&nowtime);
 	lastinactcheck = nowtime;
     lastskewupdate = nowtime;
     lastrefupdate = nowtime;
@@ -518,8 +521,8 @@ int main(int argc, char *argv[])
                                     skimmer[Skimmers].reported = false;
 
                                     Skimmers++;
-                                    // if (debug)
-                                        // fprintf(stderr, "Found skimmer #%d: %s \n", Skimmers, pipeline[pi].de);
+                                    if (!debug && !verbose)
+                                        fprintf(stderr, "Found skimmer #%d: %s \n", Skimmers, pipeline[pi].de);
                                 }
                             }
                         }
@@ -556,6 +559,7 @@ int main(int argc, char *argv[])
 				}
 				else
         	    {
+                    (void)time(&nowtime);
                     struct tm curt = *gmtime(&nowtime);
                     int count = 0;
                     for (int i = 0; i < Skimmers; i++)
@@ -568,7 +572,13 @@ int main(int argc, char *argv[])
         }
 
         // Check for inactive skimmers every CHECKPERIOD seconds
-        time(&nowtime);
+
+        char nowtimestring[TSLEN];
+        struct tm ntime;
+
+        (void)time(&nowtime);
+        ntime = *gmtime(&nowtime);
+        (void)strftime(nowtimestring, TSLEN, "%Y-%m-%d %H:%M:%S UTC", &ntime);
 
         double elapsed = difftime(nowtime, lastinactcheck);
         if (elapsed > CHECKPERIOD) 
@@ -627,7 +637,7 @@ int main(int argc, char *argv[])
                     skimmer[si].reported = true;
                     int spots = 0;
                     strcpy(pbuffer, "SKEW_TEST_SKEW");
-                    printf("%s ", pbuffer);
+                    if (verbose) printf("%s ", pbuffer);
                     zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
                     for (int bi = 0; bi < BANDS; bi++)
@@ -654,9 +664,11 @@ int main(int argc, char *argv[])
                         pbuffer[bp++] = '}';
                     pbuffer[bp] = '\0';
                     zmq_send(publisher, pbuffer, bp, 0);
-                    printf("%s\n", pbuffer);
+                    if (verbose) printf("%s\n", pbuffer);
                 }
             }
+            if (!verbose && !debug)
+                printf("Updated skews at %s.\n", nowtimestring);
         }
 
         // Publish list of reference skimmers every REFUPDATEPERIOD seconds
@@ -666,7 +678,7 @@ int main(int argc, char *argv[])
         {
             lastrefupdate = nowtime;
             strcpy(pbuffer, "SKEW_TEST_REF");
-            printf("%s ", pbuffer);
+            if (verbose) printf("%s ", pbuffer);
             zmq_send(publisher, pbuffer, strlen(pbuffer), ZMQ_SNDMORE);
 
             snprintf(pbuffer, BUFLEN, "{\"time\":%ld,\"ref_count\":%d,\"ref_call\":[", 
@@ -685,10 +697,14 @@ int main(int argc, char *argv[])
             pbuffer[bp++] = '}';
             pbuffer[bp] = 0;
             zmq_send(publisher, pbuffer, strlen(pbuffer), 0);
-            printf("%s\n", pbuffer);
+            if (verbose) printf("%s\n", pbuffer);
+
+            if (!verbose && !debug)
+                printf("Announced reference skimmers at %s.\n", nowtimestring);
         }
 
         // Read updated list of reference skimmers once per day
+
         struct tm curt = *gmtime(&nowtime);
         if (curt.tm_hour == REFUPDHOUR && curt.tm_min > REFUPDMINUTE && curt.tm_mday != lastday)
         // if (curt.tm_min > 30 && curt.tm_hour != lastday)
@@ -696,10 +712,7 @@ int main(int argc, char *argv[])
             updatereferences(reffilename);
             lastday = curt.tm_mday;
             // lastday = curt.tm_hour;
-            sprintf(tmpstring,
-                "Updated reference skimmer list %4d-%02d-%02d %02d:%02d:%02d UTC      ",
-                curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday,
-                curt.tm_hour, curt.tm_min, curt.tm_sec);
+            sprintf(tmpstring, "Updated reference skimmer list %s       ", nowtimestring);
             if (debug)
                 printstatus(tmpstring, 3);
             else
@@ -709,6 +722,7 @@ int main(int argc, char *argv[])
         // If the spots counter reaches maximum, reset counters and clear pipeline
         // but leave skimmer list including averages intact
         // LONG_MAX is half of ULONG_MAX so the check is safe
+
         if (Totalspots >= LONG_MAX)
         {
             Totalspots = 0;
