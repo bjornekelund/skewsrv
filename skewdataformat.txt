@@ -23,16 +23,16 @@ SKEW_TEST_REF {"time":eee,"ref_count":dd,"ref_call":["call1","call2",...]}
 * dd is number of active reference skimmers. 
 * call# is callsign of reference skimmmers.
 
-SKEW_TEST_24H {"node":callsign,"ref":bbb,"time":eee,"24h_skew":{"ppm":nnn,"qual":qqq,"count":ccc},
-  "24h_per_band":{"160m":{"ppm":nnn,"qual":qqq,"count":ccc},"80m":{"ppm":nnn,"qual":qqq,"count":ccc},
-  "60m":{"ppm":nnn,"qual":qqq,"count":ccc},"40m":{"ppm":nnn,"qual":qqq,"count":ccc},"30m":{"ppm":nnn,"qual":qqq,"count":ccc},
-  "20m":{"ppm":nnn,"qual":qqq,"count":ccc},"17m":{"ppm":nnn,"qual":qqq,"count":ccc},"15m":{"ppm":nnn,"qual":qqq,"count":ccc},
-  "12m":{"ppm":nnn,"qual":qqq,"count":ccc},"10m":{"ppm":nnn,"qual":qqq,"count":ccc},"6m":{"ppm":nnn,"qual":qqq,"count":ccc},
-  "2m":{"ppm":nnn,"qual":qqq,"count":ccc}}}
+SKEW_TEST_24H {"node":callsign,"ref":bbb,"time":eee,"24h_skew":{"skew":nnn,"qual":qqq,"count":ccc},
+  "24h_per_band":{"160m":{"skew":nnn,"qual":qqq,"count":ccc},"80m":{"skew":nnn,"qual":qqq,"count":ccc},
+  "60m":{"skew":nnn,"qual":qqq,"count":ccc},"40m":{"skew":nnn,"qual":qqq,"count":ccc},"30m":{"skew":nnn,"qual":qqq,"count":ccc},
+  "20m":{"skew":nnn,"qual":qqq,"count":ccc},"17m":{"skew":nnn,"qual":qqq,"count":ccc},"15m":{"skew":nnn,"qual":qqq,"count":ccc},
+  "12m":{"skew":nnn,"qual":qqq,"count":ccc},"10m":{"skew":nnn,"qual":qqq,"count":ccc},"6m":{"skew":nnn,"qual":qqq,"count":ccc},
+  "2m":{"skew":nnn,"qual":qqq,"count":ccc}}}
 
 * callsign is callsign of skimmer
-* bbb is true if node is reference skimmer,else false
+* bbb is true if node is reference skimmer, else false
 * eee is time of the update in second-based epoch
-* nnn is skew in ppm,float with sign
-* qqq is reliability metric 0-9,integer
-* ccc is number of analyzed spots,integer
+* nnn is skew in ppm, float with sign
+* qqq is reliability metric 0-9, integer
+* ccc is number of analyzed spots, integer
