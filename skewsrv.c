@@ -102,7 +102,7 @@ static int Referenceskimmers = 0;
 static char referenceskimmer[MAXREF][STRLEN];
 
 // Spot counters. Large enough to last forever.
-static unsigned long int Totalspots = 0, Qualifiedspots = 0;
+static unsigned long long int Totalspots = 0, Qualifiedspots = 0;
 
 // Human friendly names of bands
 const char *bandname[] = BANDNAMES;
@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
     int c, spp = 0, lastday = 0;
     time_t lastinactcheck, lastskewupdate, lastrefupdate, nowtime;
     bool debug = false, connected = false, verbose = false;
-    unsigned long int lastspotcount = 0;
+    unsigned long long int lastspotcount = 0;
     double spotsperminute = 0.0;
     char zmqsuburl[BUFLEN] = ZMQSUBURL;
     char zmqpuburl[BUFLEN] = ZMQPUBURL;
@@ -358,8 +358,6 @@ int main(int argc, char *argv[])
 
             if (got == 12)
             {
-				//printf("jstime1 = %lld jstime2 = %lld\n", jstime1, jstime2);
-
                 spottime = jstime2 / 1000;
 
                 Totalspots++;
@@ -471,7 +469,7 @@ int main(int argc, char *argv[])
 
                                     if (debug)
                                     {
-                                        sprintf(tmpstring, "%ld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
+                                        sprintf(tmpstring, "%lld spots of which %.1lf%% qualified for analysis. Current rate is %.1lf spots per minute.        ", 
                                             Totalspots, 100.0 * (double)Qualifiedspots / (double)Totalspots, spotsperminute);
                                         printstatus(tmpstring, 2);
 
@@ -564,7 +562,7 @@ int main(int argc, char *argv[])
                     int count = 0;
                     for (int i = 0; i < Skimmers; i++)
                         count += skimmer[i].active ? 1 : 0;
-                    printf("%4d-%02d-%02d %02d:%02d:%02d UTC. Spot count: %ld. %.1lf spots/minute from %d skimmers.\n",
+                    printf("%4d-%02d-%02d %02d:%02d:%02d UTC. Spot count: %lld. %.1lf spots/minute from %d skimmers.\n",
                         curt.tm_year + 1900, curt.tm_mon + 1,curt.tm_mday, curt.tm_hour, 
                         curt.tm_min, curt.tm_sec, Totalspots, spotsperminute, count);
                 }
@@ -723,7 +721,7 @@ int main(int argc, char *argv[])
         // but leave skimmer list including averages intact
         // LONG_MAX is half of ULONG_MAX so the check is safe
 
-        if (Totalspots >= LONG_MAX)
+        if (Totalspots >= LLONG_MAX)
         {
             Totalspots = 0;
             Qualifiedspots = 0;
