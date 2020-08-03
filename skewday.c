@@ -575,7 +575,7 @@ int main(int argc, char *argv[])
             time_t  nowtime;
             time(&nowtime);
 
-            snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"ref\":%s,\"time\":%ld,\"24h_skew\":{%.1f,%d,%d}\"24h_per_band\":{",
+            snprintf(pbuffer, BUFLEN, "{\"node\":\"%s\",\"ref\":%s,\"time\":%ld,\"24h_skew\":{\"skew\":%.1f,\"qual\":%d,\"count\":%d}\"24h_per_band\":{",
                 Skimmer[si].call, Skimmer[si].reference ? "true" : "false",
                 nowtime, Skimmer[si].avdev, Skimmer[si].quality, Skimmer[si].count);
             int bp = strlen(pbuffer);
@@ -591,7 +591,7 @@ int main(int argc, char *argv[])
                     snprintf(counts, STRLEN, "%d", Skimmer[si].band[bi].count);
                 }
 
-                snprintf(tmps, LINELEN, "%s\"%s\":{%s,%s,%s}", first ? "" : ",", bandname[bi],
+                snprintf(tmps, LINELEN, "%s\"%s\":{\"skew\":%s,\"qual\":%s,\"count\":%s}", first ? "" : ",", bandname[bi],
                     valid ? avdevs : "null", valid ? quals : "null", valid ? counts : "null");
 
                 strcpy(&pbuffer[bp], tmps);
