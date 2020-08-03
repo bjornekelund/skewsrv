@@ -7,8 +7,8 @@ int main(int argc, char *argv[])
     int signedint = INT_MAX;
     unsigned long int unsignedlongint = ULONG_MAX;
     long int longint = LONG_MAX;
-    unsigned long long int unsignedlonglongint = ULONG_MAX;
-    long long int longlongint = LONG_MAX;
+    unsigned long long int unsignedlonglongint = ULLONG_MAX;
+    long long int longlongint = LLONG_MAX;
     
     printf("max unsigned int = %u = %.2e (%zu bytes)\n", unsignedint, (double)unsignedint, sizeof(unsignedint));
     printf("max int = %d = %.2e (%zu bytes)\n", signedint, (double)signedint, sizeof(signedint));
