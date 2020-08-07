@@ -3,7 +3,7 @@
 # Also updates the file "reference" based on the same data
 
 # Move to correct folder to allow cron execution on RPi
-[ -d "/home/pi/skewsrv" ] && cd /home/pi/skewsrv
+[ -d "/home/sm7iun/skewsrv" ] && cd /home/sm7iun/skewsrv
 
 FOLDER="rbndata"
 DATE=`date -u --date="1 days ago" +%Y%m%d`
