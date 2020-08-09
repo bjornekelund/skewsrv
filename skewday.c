@@ -449,6 +449,8 @@ int main(int argc, char *argv[])
     int trc = zmq_bind(publisher, ZMQPUBURL);
 
     printf("Established publisher context and socket with %s status\n", trc == 0 ? "OK" : "NOT OK");
+    if (trc != 0)
+        printf("Error code %d\n", errno);
 
     printf("Analysis pass #1...\n");
 
