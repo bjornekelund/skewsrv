@@ -7,6 +7,7 @@
 #include <time.h>
 #include <math.h>
 #include <limits.h>
+#include <getopt.h>
 
 #define BUFLEN 256
 #define STRLEN 16
